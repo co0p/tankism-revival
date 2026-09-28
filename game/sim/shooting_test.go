@@ -26,6 +26,7 @@ func TestUpdateWeaponsAndSpawnProjectiles(t *testing.T) {
 		ProjectileLightColor:      ecs.LightColor{R: 1, G: 0.5, B: 0.3},
 		MuzzleFlashSpriteID:       "flash",
 		MuzzleFlashLifetime:       0.08,
+		MuzzleFlashOffset:         6,
 		MuzzleFlashLightRadius:    24,
 		MuzzleFlashLightIntensity: 0.6,
 		MuzzleFlashLightColor:     ecs.LightColor{R: 1, G: 0.7, B: 0.4},
@@ -69,6 +70,28 @@ func TestUpdateWeaponsAndSpawnProjectiles(t *testing.T) {
 	lifetimes := w.LifetimeStates()
 	if len(lifetimes) != 1 {
 		t.Fatalf("expected exactly 1 lifetime entity for muzzle flash, got %d", len(lifetimes))
+	}
+
+	for entity := range lifetimes {
+		muzzleFlashTransform, ok := w.Transform(entity)
+		if !ok {
+			t.Fatalf("expected muzzle flash transform")
+		}
+
+		if muzzleFlashTransform.Y >= p.Transform.Y {
+			t.Fatalf("expected muzzle flash in front of projectile spawn, got flashY=%f projectileY=%f", muzzleFlashTransform.Y, p.Transform.Y)
+		}
+
+		muzzleFlashHasLight := false
+		for _, source := range pointLights {
+			if source.Entity == entity {
+				muzzleFlashHasLight = true
+				break
+			}
+		}
+		if !muzzleFlashHasLight {
+			t.Fatalf("expected muzzle flash to carry the transient point light")
+		}
 	}
 
 	weapon, ok := w.Weapon(tank)

@@ -15,6 +15,15 @@ The first release includes player movement and firing, enemy hunters, obstacles,
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): implementation slices and completion criteria.
 - [`docs/adr/`](docs/adr): durable architecture decisions.
 
+## Runtime package architecture
+
+- `app/tankism`: composition root (asset loading, entity wiring, update loop, process entrypoint)
+- `game/ecs`: minimal entity-component storage and queries
+- `game/sim`: deterministic game rules/systems (movement, AI, shooting, collisions)
+- `game/worldseed`: deterministic map/entity seeding for startup
+- `game/input`: Ebitengine input adapter (`keyboard -> intent snapshot`)
+- `game/render`: Ebitengine rendering adapter (sprites, lighting, HUD)
+
 ## Assets
 
 - Current player placeholder sprite: `resources/images/kenney_topdown_tanks_redux/tank_red_small.png`

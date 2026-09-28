@@ -2,6 +2,7 @@ package sim
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
 )
@@ -63,8 +64,11 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 			}
 
 			if shouldSpawnMuzzleFlash(weapon) {
+				muzzleFlashX := spawnX + forwardX*weapon.MuzzleFlashOffset
+				muzzleFlashY := spawnY + forwardY*weapon.MuzzleFlashOffset
+
 				muzzleFlash := world.CreateEntity()
-				if err := world.SetTransform(muzzleFlash, ecs.Transform{X: spawnX, Y: spawnY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
+				if err := world.SetTransform(muzzleFlash, ecs.Transform{X: muzzleFlashX, Y: muzzleFlashY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
 					return fmt.Errorf("set muzzle flash transform: %w", err)
 				}
 
@@ -72,7 +76,7 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 					if err := world.SetSpriteRenderer(muzzleFlash, ecs.SpriteRenderer{
 						SpriteID:              weapon.MuzzleFlashSpriteID,
 						ZIndex:                muzzleFlashZIndex,
-						RotationOffsetRadians: 0,
+						RotationOffsetRadians: math.Pi,
 					}); err != nil {
 						return fmt.Errorf("set muzzle flash sprite: %w", err)
 					}

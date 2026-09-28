@@ -61,6 +61,7 @@ type Weapon struct {
 	ProjectileLightColor      LightColor
 	MuzzleFlashSpriteID       string
 	MuzzleFlashLifetime       float64
+	MuzzleFlashOffset         float64
 	MuzzleFlashLightRadius    float64
 	MuzzleFlashLightIntensity float64
 	MuzzleFlashLightColor     LightColor
