@@ -27,6 +27,9 @@ func TestUpdateChaserIntentTargetAhead(t *testing.T) {
 
 	approxEqual(t, intent.Turn, 0, 1e-9)
 	approxEqual(t, intent.Throttle, 1, 1e-9)
+	if !intent.Fire {
+		t.Fatalf("expected chaser to fire when target is ahead and in range")
+	}
 }
 
 func TestUpdateChaserIntentTurnsTowardRightTarget(t *testing.T) {
@@ -49,6 +52,10 @@ func TestUpdateChaserIntentTurnsTowardRightTarget(t *testing.T) {
 	if intent.Turn <= 0 {
 		t.Fatalf("expected positive turn toward right-side target, got %f", intent.Turn)
 	}
+
+	if intent.Fire {
+		t.Fatalf("chaser should not fire while not aligned")
+	}
 }
 
 func TestUpdateChaserIntentStopsWithinStopDistance(t *testing.T) {
@@ -69,4 +76,7 @@ func TestUpdateChaserIntentStopsWithinStopDistance(t *testing.T) {
 	}
 
 	approxEqual(t, intent.Throttle, 0, 1e-9)
+	if intent.Fire {
+		t.Fatalf("chaser should not fire while heavily misaligned")
+	}
 }

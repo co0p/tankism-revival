@@ -11,6 +11,12 @@ const (
 	ObstacleBarrelRedTopPath = "images/kenney_topdown_tanks_redux/obstacle_barrel_red_top.png"
 	ObstacleFenceRedPath     = "images/kenney_topdown_tanks_redux/obstacle_fence_red.png"
 	ObstacleCrateWoodPath    = "images/kenney_topdown_tanks_redux/obstacle_crate_wood.png"
+
+	ProjectileRedPath  = "images/kenney_topdown_tanks_redux/projectile_red.png"
+	ProjectileBluePath = "images/kenney_topdown_tanks_redux/projectile_blue.png"
+
+	ShotRedPath    = "images/kenney_topdown_tanks_redux/shot_red.png"
+	ShotOrangePath = "images/kenney_topdown_tanks_redux/shot_orange.png"
 )
 
 // FS contains embedded runtime assets needed by the executable.

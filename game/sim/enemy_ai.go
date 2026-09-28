@@ -36,6 +36,10 @@ func UpdateChaserIntent(world *ecs.World, chaser, target ecs.Entity, stopDistanc
 		if intent.Throttle > 0 && math.Abs(turnDelta) > (math.Pi*0.75) {
 			intent.Throttle = 0.25
 		}
+
+		if distanceSquared <= 420*420 && math.Abs(turnDelta) <= 0.22 {
+			intent.Fire = true
+		}
 	}
 
 	if err := world.SetTankControlIntent(chaser, intent); err != nil {

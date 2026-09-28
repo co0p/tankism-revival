@@ -9,4 +9,10 @@ const (
 	SpriteObstacleBarrelRedTop = "obstacle_barrel_red_top"
 	SpriteObstacleFenceRed     = "obstacle_fence_red"
 	SpriteObstacleCrateWood    = "obstacle_crate_wood"
+
+	SpriteProjectileRed  = "projectile_red"
+	SpriteProjectileBlue = "projectile_blue"
+
+	SpriteShotRed    = "shot_red"
+	SpriteShotOrange = "shot_orange"
 )

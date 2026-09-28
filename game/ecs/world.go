@@ -26,6 +26,7 @@ type SpriteRenderer struct {
 type TankControlIntent struct {
 	Throttle float64
 	Turn     float64
+	Fire     bool
 }
 
 type TankDrive struct {
@@ -44,6 +45,37 @@ type TankDeceleration struct {
 
 type TankVelocity struct {
 	ForwardUnitsPerSecond float64
+}
+
+type Weapon struct {
+	CooldownSeconds           float64
+	CooldownRemaining         float64
+	ProjectileSpeed           float64
+	ProjectileLifetime        float64
+	ProjectileDamage          float64
+	MuzzleOffset              float64
+	ProjectileSpriteID        string
+	ProjectileRadius          float64
+	ProjectileLightRadius     float64
+	ProjectileLightIntensity  float64
+	ProjectileLightColor      LightColor
+	MuzzleFlashSpriteID       string
+	MuzzleFlashLifetime       float64
+	MuzzleFlashLightRadius    float64
+	MuzzleFlashLightIntensity float64
+	MuzzleFlashLightColor     LightColor
+}
+
+type Projectile struct {
+	Owner             Entity
+	VelocityX         float64
+	VelocityY         float64
+	RemainingLifetime float64
+	Damage            float64
+}
+
+type Lifetime struct {
+	RemainingSeconds float64
 }
 
 type Health struct {
@@ -85,6 +117,20 @@ type PointLightSource struct {
 	Light     PointLight
 }
 
+type ArmedTank struct {
+	Entity    Entity
+	Transform Transform
+	Intent    TankControlIntent
+	Weapon    Weapon
+}
+
+type ProjectileState struct {
+	Entity     Entity
+	Transform  Transform
+	Projectile Projectile
+	Collider   CircleCollider
+}
+
 type TankHealthState struct {
 	Entity    Entity
 	Transform Transform
@@ -118,6 +164,9 @@ type World struct {
 	deceleration map[Entity]TankDeceleration
 	velocity     map[Entity]TankVelocity
 	health       map[Entity]Health
+	weapons      map[Entity]Weapon
+	projectiles  map[Entity]Projectile
+	lifetimes    map[Entity]Lifetime
 	colliders    map[Entity]CircleCollider
 	solid        map[Entity]struct{}
 	ambient      map[Entity]AmbientLight
@@ -136,6 +185,9 @@ func NewWorld() *World {
 		deceleration: make(map[Entity]TankDeceleration),
 		velocity:     make(map[Entity]TankVelocity),
 		health:       make(map[Entity]Health),
+		weapons:      make(map[Entity]Weapon),
+		projectiles:  make(map[Entity]Projectile),
+		lifetimes:    make(map[Entity]Lifetime),
 		colliders:    make(map[Entity]CircleCollider),
 		solid:        make(map[Entity]struct{}),
 		ambient:      make(map[Entity]AmbientLight),
@@ -170,6 +222,9 @@ func (w *World) DestroyEntity(entity Entity) bool {
 	delete(w.deceleration, entity)
 	delete(w.velocity, entity)
 	delete(w.health, entity)
+	delete(w.weapons, entity)
+	delete(w.projectiles, entity)
+	delete(w.lifetimes, entity)
 	delete(w.colliders, entity)
 	delete(w.solid, entity)
 	delete(w.ambient, entity)
@@ -320,6 +375,60 @@ func (w *World) Health(entity Entity) (Health, bool) {
 
 func (w *World) RemoveHealth(entity Entity) {
 	delete(w.health, entity)
+}
+
+func (w *World) SetWeapon(entity Entity, weapon Weapon) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.weapons[entity] = weapon
+	return nil
+}
+
+func (w *World) Weapon(entity Entity) (Weapon, bool) {
+	weapon, ok := w.weapons[entity]
+	return weapon, ok
+}
+
+func (w *World) RemoveWeapon(entity Entity) {
+	delete(w.weapons, entity)
+}
+
+func (w *World) SetProjectile(entity Entity, projectile Projectile) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.projectiles[entity] = projectile
+	return nil
+}
+
+func (w *World) Projectile(entity Entity) (Projectile, bool) {
+	projectile, ok := w.projectiles[entity]
+	return projectile, ok
+}
+
+func (w *World) RemoveProjectile(entity Entity) {
+	delete(w.projectiles, entity)
+}
+
+func (w *World) SetLifetime(entity Entity, lifetime Lifetime) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.lifetimes[entity] = lifetime
+	return nil
+}
+
+func (w *World) Lifetime(entity Entity) (Lifetime, bool) {
+	lifetime, ok := w.lifetimes[entity]
+	return lifetime, ok
+}
+
+func (w *World) RemoveLifetime(entity Entity) {
+	delete(w.lifetimes, entity)
 }
 
 func (w *World) SetCircleCollider(entity Entity, collider CircleCollider) error {
@@ -578,6 +687,89 @@ func (w *World) PointLightSources() []PointLightSource {
 	})
 
 	return sources
+}
+
+func (w *World) ArmedTanks() []ArmedTank {
+	armed := make([]ArmedTank, 0, len(w.weapons))
+
+	for entity, weapon := range w.weapons {
+		_, hasDrive := w.drives[entity]
+		if !hasDrive {
+			continue
+		}
+
+		transform, hasTransform := w.transforms[entity]
+		if !hasTransform {
+			continue
+		}
+
+		intent := w.intents[entity]
+
+		armed = append(armed, ArmedTank{
+			Entity:    entity,
+			Transform: transform,
+			Intent:    intent,
+			Weapon:    weapon,
+		})
+	}
+
+	slices.SortFunc(armed, func(a, b ArmedTank) int {
+		if a.Entity < b.Entity {
+			return -1
+		}
+		if a.Entity > b.Entity {
+			return 1
+		}
+
+		return 0
+	})
+
+	return armed
+}
+
+func (w *World) ProjectileStates() []ProjectileState {
+	states := make([]ProjectileState, 0, len(w.projectiles))
+
+	for entity, projectile := range w.projectiles {
+		transform, hasTransform := w.transforms[entity]
+		if !hasTransform {
+			continue
+		}
+
+		collider, hasCollider := w.colliders[entity]
+		if !hasCollider {
+			continue
+		}
+
+		states = append(states, ProjectileState{
+			Entity:     entity,
+			Transform:  transform,
+			Projectile: projectile,
+			Collider:   collider,
+		})
+	}
+
+	slices.SortFunc(states, func(a, b ProjectileState) int {
+		if a.Entity < b.Entity {
+			return -1
+		}
+		if a.Entity > b.Entity {
+			return 1
+		}
+
+		return 0
+	})
+
+	return states
+}
+
+func (w *World) LifetimeStates() map[Entity]Lifetime {
+	states := make(map[Entity]Lifetime, len(w.lifetimes))
+	for entity, lifetime := range w.lifetimes {
+		states[entity] = lifetime
+	}
+
+	return states
 }
 
 func (w *World) TankHealthStates() []TankHealthState {

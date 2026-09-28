@@ -22,19 +22,43 @@ const (
 
 	fixedDeltaSeconds = 1.0 / 60.0
 
-	defaultPlayerMoveSpeed                = 160
-	defaultPlayerTurnSpeedRadiansPS       = math.Pi
-	defaultPlayerAcceleration             = 240
-	defaultPlayerCoastDeceleration        = 180
-	defaultPlayerBrakeDeceleration        = 420
-	defaultEnemyMoveSpeed                 = 145
-	defaultEnemyTurnSpeedRadiansPS        = 2.5
-	defaultEnemyAcceleration              = 210
-	defaultEnemyCoastDeceleration         = 170
-	defaultEnemyBrakeDeceleration         = 320
-	defaultEnemyStopDistance              = 110.0
-	defaultGrassTileSeed            int64 = 42
-	defaultObstacleSeed             int64 = 31415
+	defaultPlayerMoveSpeed          = 160
+	defaultPlayerTurnSpeedRadiansPS = math.Pi
+	defaultPlayerAcceleration       = 240
+	defaultPlayerCoastDeceleration  = 180
+	defaultPlayerBrakeDeceleration  = 420
+	defaultEnemyMoveSpeed           = 105
+	defaultEnemyTurnSpeedRadiansPS  = 1.9
+	defaultEnemyAcceleration        = 150
+	defaultEnemyCoastDeceleration   = 140
+	defaultEnemyBrakeDeceleration   = 240
+	defaultEnemyStopDistance        = 145.0
+
+	defaultPlayerWeaponCooldown            = 0.28
+	defaultPlayerProjectileSpeed           = 360.0
+	defaultPlayerProjectileLife            = 1.25
+	defaultPlayerProjectileDamage          = 12.0
+	defaultPlayerMuzzleOffset              = 22.0
+	defaultPlayerProjectileRadius          = 4.0
+	defaultPlayerProjectileLightRadius     = 56.0
+	defaultPlayerProjectileLightIntensity  = 0.34
+	defaultPlayerMuzzleFlashLifetime       = 0.07
+	defaultPlayerMuzzleFlashLightRadius    = 64.0
+	defaultPlayerMuzzleFlashLightIntensity = 0.52
+
+	defaultEnemyWeaponCooldown                  = 0.74
+	defaultEnemyProjectileSpeed                 = 300.0
+	defaultEnemyProjectileLife                  = 1.15
+	defaultEnemyProjectileDamage                = 6.0
+	defaultEnemyMuzzleOffset                    = 22.0
+	defaultEnemyProjectileRadius                = 4.0
+	defaultEnemyProjectileLightRadius           = 48.0
+	defaultEnemyProjectileLightIntensity        = 0.24
+	defaultEnemyMuzzleFlashLifetime             = 0.07
+	defaultEnemyMuzzleFlashLightRadius          = 56.0
+	defaultEnemyMuzzleFlashLightIntensity       = 0.44
+	defaultGrassTileSeed                  int64 = 42
+	defaultObstacleSeed                   int64 = 31415
 
 	defaultAmbientDarkness             = 0.70
 	defaultPlayerLightRadius           = 170.0
@@ -111,6 +135,22 @@ func NewApp() (*App, error) {
 	obstacleCrate, _, err := ebitenutil.NewImageFromFileSystem(gameassets.FS, gameassets.ObstacleCrateWoodPath)
 	if err != nil {
 		return nil, fmt.Errorf("load obstacle sprite %q: %w", gameassets.ObstacleCrateWoodPath, err)
+	}
+	projectileRed, _, err := ebitenutil.NewImageFromFileSystem(gameassets.FS, gameassets.ProjectileRedPath)
+	if err != nil {
+		return nil, fmt.Errorf("load projectile sprite %q: %w", gameassets.ProjectileRedPath, err)
+	}
+	projectileBlue, _, err := ebitenutil.NewImageFromFileSystem(gameassets.FS, gameassets.ProjectileBluePath)
+	if err != nil {
+		return nil, fmt.Errorf("load projectile sprite %q: %w", gameassets.ProjectileBluePath, err)
+	}
+	shotRed, _, err := ebitenutil.NewImageFromFileSystem(gameassets.FS, gameassets.ShotRedPath)
+	if err != nil {
+		return nil, fmt.Errorf("load shot sprite %q: %w", gameassets.ShotRedPath, err)
+	}
+	shotOrange, _, err := ebitenutil.NewImageFromFileSystem(gameassets.FS, gameassets.ShotOrangePath)
+	if err != nil {
+		return nil, fmt.Errorf("load shot sprite %q: %w", gameassets.ShotOrangePath, err)
 	}
 	lightSprite := newRadialLightSprite(defaultLightSpriteSize)
 
@@ -190,6 +230,25 @@ func NewApp() (*App, error) {
 	}); err != nil {
 		return nil, fmt.Errorf("set player point light: %w", err)
 	}
+	if err := world.SetWeapon(player, ecs.Weapon{
+		CooldownSeconds:           defaultPlayerWeaponCooldown,
+		ProjectileSpeed:           defaultPlayerProjectileSpeed,
+		ProjectileLifetime:        defaultPlayerProjectileLife,
+		ProjectileDamage:          defaultPlayerProjectileDamage,
+		MuzzleOffset:              defaultPlayerMuzzleOffset,
+		ProjectileSpriteID:        game.SpriteProjectileRed,
+		ProjectileRadius:          defaultPlayerProjectileRadius,
+		ProjectileLightRadius:     defaultPlayerProjectileLightRadius,
+		ProjectileLightIntensity:  defaultPlayerProjectileLightIntensity,
+		ProjectileLightColor:      ecs.LightColor{R: 1.00, G: 0.62, B: 0.38},
+		MuzzleFlashSpriteID:       game.SpriteShotRed,
+		MuzzleFlashLifetime:       defaultPlayerMuzzleFlashLifetime,
+		MuzzleFlashLightRadius:    defaultPlayerMuzzleFlashLightRadius,
+		MuzzleFlashLightIntensity: defaultPlayerMuzzleFlashLightIntensity,
+		MuzzleFlashLightColor:     ecs.LightColor{R: 1.00, G: 0.68, B: 0.45},
+	}); err != nil {
+		return nil, fmt.Errorf("set player weapon: %w", err)
+	}
 
 	playerBackLight := world.CreateEntity()
 	backLightX, backLightY := tankBackLightPosition(spawnX, spawnY, 0)
@@ -265,6 +324,25 @@ func NewApp() (*App, error) {
 	}); err != nil {
 		return nil, fmt.Errorf("set enemy point light: %w", err)
 	}
+	if err := world.SetWeapon(enemy, ecs.Weapon{
+		CooldownSeconds:           defaultEnemyWeaponCooldown,
+		ProjectileSpeed:           defaultEnemyProjectileSpeed,
+		ProjectileLifetime:        defaultEnemyProjectileLife,
+		ProjectileDamage:          defaultEnemyProjectileDamage,
+		MuzzleOffset:              defaultEnemyMuzzleOffset,
+		ProjectileSpriteID:        game.SpriteProjectileBlue,
+		ProjectileRadius:          defaultEnemyProjectileRadius,
+		ProjectileLightRadius:     defaultEnemyProjectileLightRadius,
+		ProjectileLightIntensity:  defaultEnemyProjectileLightIntensity,
+		ProjectileLightColor:      ecs.LightColor{R: 0.74, G: 0.86, B: 1.00},
+		MuzzleFlashSpriteID:       game.SpriteShotOrange,
+		MuzzleFlashLifetime:       defaultEnemyMuzzleFlashLifetime,
+		MuzzleFlashLightRadius:    defaultEnemyMuzzleFlashLightRadius,
+		MuzzleFlashLightIntensity: defaultEnemyMuzzleFlashLightIntensity,
+		MuzzleFlashLightColor:     ecs.LightColor{R: 0.96, G: 0.80, B: 0.56},
+	}); err != nil {
+		return nil, fmt.Errorf("set enemy weapon: %w", err)
+	}
 
 	if err := seedObstacles(world, worldMap, spawnX, spawnY, enemySpawnX, enemySpawnY, defaultObstacleSeed); err != nil {
 		return nil, fmt.Errorf("seed obstacles: %w", err)
@@ -289,6 +367,10 @@ func NewApp() (*App, error) {
 			game.SpriteObstacleBarrelRedTop: obstacleBarrel,
 			game.SpriteObstacleFenceRed:     obstacleFence,
 			game.SpriteObstacleCrateWood:    obstacleCrate,
+			game.SpriteProjectileRed:        projectileRed,
+			game.SpriteProjectileBlue:       projectileBlue,
+			game.SpriteShotRed:              shotRed,
+			game.SpriteShotOrange:           shotOrange,
 		},
 	}, nil
 }
@@ -305,8 +387,24 @@ func (a *App) Update() error {
 
 	sim.IntegrateTankMovement(a.world, fixedDeltaSeconds)
 
+	if err := sim.UpdateWeaponsAndSpawnProjectiles(a.world, fixedDeltaSeconds, game.ZIndexProjectiles, game.ZIndexEffects); err != nil {
+		return fmt.Errorf("update weapons and spawn projectiles: %w", err)
+	}
+
+	if err := sim.IntegrateProjectiles(a.world, fixedDeltaSeconds); err != nil {
+		return fmt.Errorf("integrate projectiles: %w", err)
+	}
+
+	if err := sim.ResolveProjectileImpacts(a.world); err != nil {
+		return fmt.Errorf("resolve projectile impacts: %w", err)
+	}
+
 	if err := sim.ResolveTankObstacleCollisions(a.world); err != nil {
 		return fmt.Errorf("resolve tank obstacle collisions: %w", err)
+	}
+
+	if err := sim.UpdateLifetimes(a.world, fixedDeltaSeconds); err != nil {
+		return fmt.Errorf("update lifetimes: %w", err)
 	}
 
 	playerTransform, ok := a.world.Transform(a.playerEntity)
@@ -321,6 +419,18 @@ func (a *App) Update() error {
 
 		if err := a.world.SetTransform(a.playerEntity, playerTransform); err != nil {
 			return fmt.Errorf("clamp player transform: %w", err)
+		}
+	}
+
+	enemyTransform, ok := a.world.Transform(a.enemyEntity)
+	if ok {
+		enemyClampedX, enemyClampedY := a.worldMap.ClampPosition(enemyTransform.X, enemyTransform.Y)
+		if enemyClampedX != enemyTransform.X || enemyClampedY != enemyTransform.Y {
+			enemyTransform.X = enemyClampedX
+			enemyTransform.Y = enemyClampedY
+			if err := a.world.SetTransform(a.enemyEntity, enemyTransform); err != nil {
+				return fmt.Errorf("clamp enemy transform: %w", err)
+			}
 		}
 	}
 
@@ -707,6 +817,9 @@ func readPlayerIntent() ecs.TankControlIntent {
 	}
 	if ebiten.IsKeyPressed(ebiten.KeyD) || ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
 		intent.Turn += 1
+	}
+	if ebiten.IsKeyPressed(ebiten.KeySpace) {
+		intent.Fire = true
 	}
 
 	return intent

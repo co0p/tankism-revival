@@ -53,6 +53,15 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 	if err := w.SetHealth(e, Health{Current: 80, Max: 100}); err != nil {
 		t.Fatalf("set health: %v", err)
 	}
+	if err := w.SetWeapon(e, Weapon{CooldownSeconds: 0.3, ProjectileSpeed: 240, ProjectileLifetime: 1.2, ProjectileDamage: 10}); err != nil {
+		t.Fatalf("set weapon: %v", err)
+	}
+	if err := w.SetProjectile(e, Projectile{Owner: e, VelocityX: 0, VelocityY: -1, RemainingLifetime: 1, Damage: 3}); err != nil {
+		t.Fatalf("set projectile: %v", err)
+	}
+	if err := w.SetLifetime(e, Lifetime{RemainingSeconds: 0.1}); err != nil {
+		t.Fatalf("set lifetime: %v", err)
+	}
 	if err := w.SetCircleCollider(e, CircleCollider{Radius: 10}); err != nil {
 		t.Fatalf("set circle collider: %v", err)
 	}
@@ -104,6 +113,18 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 
 	if _, ok := w.Health(e); ok {
 		t.Fatalf("health should be removed on destroy")
+	}
+
+	if _, ok := w.Weapon(e); ok {
+		t.Fatalf("weapon should be removed on destroy")
+	}
+
+	if _, ok := w.Projectile(e); ok {
+		t.Fatalf("projectile should be removed on destroy")
+	}
+
+	if _, ok := w.Lifetime(e); ok {
+		t.Fatalf("lifetime should be removed on destroy")
 	}
 
 	if _, ok := w.CircleCollider(e); ok {
@@ -168,6 +189,21 @@ func TestSetComponentOnDeadEntityFails(t *testing.T) {
 	err = w.SetHealth(999, Health{})
 	if !errors.Is(err, ErrEntityNotAlive) {
 		t.Fatalf("set health on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
+	err = w.SetWeapon(999, Weapon{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set weapon on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
+	err = w.SetProjectile(999, Projectile{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set projectile on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
+	err = w.SetLifetime(999, Lifetime{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set lifetime on dead entity should return ErrEntityNotAlive, got: %v", err)
 	}
 
 	err = w.SetCircleCollider(999, CircleCollider{})
@@ -426,5 +462,50 @@ func TestTankHealthStatesReturnsOnlyTanksWithHealthAndTransform(t *testing.T) {
 
 	if states[0].Entity != e1 {
 		t.Fatalf("unexpected tank health entity: got %d want %d", states[0].Entity, e1)
+	}
+}
+
+func TestArmedTanksAndProjectileStatesQueries(t *testing.T) {
+	w := NewWorld()
+
+	shooter := w.CreateEntity()
+	if err := w.SetTransform(shooter, Transform{X: 5, Y: 6}); err != nil {
+		t.Fatalf("set shooter transform: %v", err)
+	}
+	if err := w.SetTankDrive(shooter, TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}); err != nil {
+		t.Fatalf("set shooter drive: %v", err)
+	}
+	if err := w.SetTankControlIntent(shooter, TankControlIntent{Fire: true}); err != nil {
+		t.Fatalf("set shooter intent: %v", err)
+	}
+	if err := w.SetWeapon(shooter, Weapon{CooldownSeconds: 0.4, ProjectileSpeed: 300, ProjectileLifetime: 1, ProjectileDamage: 9, ProjectileSpriteID: "p", ProjectileRadius: 2}); err != nil {
+		t.Fatalf("set shooter weapon: %v", err)
+	}
+
+	armed := w.ArmedTanks()
+	if len(armed) != 1 {
+		t.Fatalf("expected 1 armed tank, got %d", len(armed))
+	}
+	if armed[0].Entity != shooter {
+		t.Fatalf("unexpected armed tank entity: got %d want %d", armed[0].Entity, shooter)
+	}
+
+	projectileEntity := w.CreateEntity()
+	if err := w.SetTransform(projectileEntity, Transform{X: 1, Y: 2}); err != nil {
+		t.Fatalf("set projectile transform: %v", err)
+	}
+	if err := w.SetCircleCollider(projectileEntity, CircleCollider{Radius: 2}); err != nil {
+		t.Fatalf("set projectile collider: %v", err)
+	}
+	if err := w.SetProjectile(projectileEntity, Projectile{Owner: shooter, VelocityX: 0, VelocityY: -1, RemainingLifetime: 1, Damage: 3}); err != nil {
+		t.Fatalf("set projectile: %v", err)
+	}
+
+	projectiles := w.ProjectileStates()
+	if len(projectiles) != 1 {
+		t.Fatalf("expected 1 projectile state, got %d", len(projectiles))
+	}
+	if projectiles[0].Entity != projectileEntity {
+		t.Fatalf("unexpected projectile entity: got %d want %d", projectiles[0].Entity, projectileEntity)
 	}
 }

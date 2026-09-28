@@ -40,4 +40,20 @@
   - Original archive path: `PNG/Default size/crateWood.png`
   - Notes: crate obstacle sprite
 
+- `resources/images/kenney_topdown_tanks_redux/projectile_red.png`
+  - Original archive path: `PNG/Default size/bulletRed1.png`
+  - Notes: projectile sprite for player shots
+
+- `resources/images/kenney_topdown_tanks_redux/projectile_blue.png`
+  - Original archive path: `PNG/Default size/bulletBlue1.png`
+  - Notes: projectile sprite for enemy shots
+
+- `resources/images/kenney_topdown_tanks_redux/shot_red.png`
+  - Original archive path: `PNG/Default size/shotRed.png`
+  - Notes: larger projectile sprite for player shots
+
+- `resources/images/kenney_topdown_tanks_redux/shot_orange.png`
+  - Original archive path: `PNG/Default size/shotOrange.png`
+  - Notes: larger projectile sprite for enemy shots
+
 Attribution is appreciated by the author but not required by CC0.
