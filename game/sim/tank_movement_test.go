@@ -74,6 +74,91 @@ func TestIntegrateTankMovementClampsIntentToUnitRange(t *testing.T) {
 	approxEqual(t, got.RotationRadians, 1.5*math.Pi, 1e-9)
 }
 
+func TestIntegrateTankMovementUsesAccelerationToRampSpeed(t *testing.T) {
+	w := ecs.NewWorld()
+	e := w.CreateEntity()
+
+	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 60}))
+	must(t, w.SetTankVelocity(e, ecs.TankVelocity{}))
+	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 1, Turn: 0}))
+
+	IntegrateTankMovement(w, 1)
+
+	velocityAfterFirstStep, ok := w.TankVelocity(e)
+	if !ok {
+		t.Fatalf("expected tank velocity")
+	}
+	approxEqual(t, velocityAfterFirstStep.ForwardUnitsPerSecond, 60, 1e-9)
+
+	got, ok := w.Transform(e)
+	if !ok {
+		t.Fatalf("expected transform")
+	}
+	approxEqual(t, got.Y, -60, 1e-9)
+
+	IntegrateTankMovement(w, 1)
+
+	velocityAfterSecondStep, ok := w.TankVelocity(e)
+	if !ok {
+		t.Fatalf("expected tank velocity")
+	}
+	approxEqual(t, velocityAfterSecondStep.ForwardUnitsPerSecond, 120, 1e-9)
+
+	got, ok = w.Transform(e)
+	if !ok {
+		t.Fatalf("expected transform")
+	}
+	approxEqual(t, got.Y, -180, 1e-9)
+}
+
+func TestIntegrateTankMovementUsesCoastDecelerationWhenThrottleReleased(t *testing.T) {
+	w := ecs.NewWorld()
+	e := w.CreateEntity()
+
+	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 160, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 300}))
+	must(t, w.SetTankDeceleration(e, ecs.TankDeceleration{CoastUnitsPerSecondSquared: 40, BrakeUnitsPerSecondSquared: 300}))
+	must(t, w.SetTankVelocity(e, ecs.TankVelocity{ForwardUnitsPerSecond: 100}))
+	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 0, Turn: 0}))
+
+	IntegrateTankMovement(w, 1)
+
+	velocity, ok := w.TankVelocity(e)
+	if !ok {
+		t.Fatalf("expected tank velocity")
+	}
+	approxEqual(t, velocity.ForwardUnitsPerSecond, 60, 1e-9)
+
+	got, ok := w.Transform(e)
+	if !ok {
+		t.Fatalf("expected transform")
+	}
+	approxEqual(t, got.Y, -60, 1e-9)
+}
+
+func TestIntegrateTankMovementUsesBrakeDecelerationForDirectionChange(t *testing.T) {
+	w := ecs.NewWorld()
+	e := w.CreateEntity()
+
+	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 50}))
+	must(t, w.SetTankDeceleration(e, ecs.TankDeceleration{CoastUnitsPerSecondSquared: 30, BrakeUnitsPerSecondSquared: 150}))
+	must(t, w.SetTankVelocity(e, ecs.TankVelocity{ForwardUnitsPerSecond: 100}))
+	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: -1, Turn: 0}))
+
+	IntegrateTankMovement(w, 1)
+
+	velocity, ok := w.TankVelocity(e)
+	if !ok {
+		t.Fatalf("expected tank velocity")
+	}
+	approxEqual(t, velocity.ForwardUnitsPerSecond, -50, 1e-9)
+}
+
 func must(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
