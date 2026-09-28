@@ -16,6 +16,10 @@
   - Original archive path: `PNG/Default size/tank_red.png`
   - Notes: first player placeholder sprite (small red tank)
 
+- `resources/images/kenney_topdown_tanks_redux/tank_blue_small.png`
+  - Original archive path: `PNG/Default size/tank_blue.png`
+  - Notes: enemy tank sprite (small blue tank)
+
 - `resources/images/kenney_topdown_tanks_redux/tile_grass_1.png`
   - Original archive path: `PNG/Default size/tileGrass1.png`
   - Notes: random map grass tiling variant A

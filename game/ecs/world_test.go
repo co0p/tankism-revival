@@ -50,11 +50,20 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 	if err := w.SetTankVelocity(e, TankVelocity{ForwardUnitsPerSecond: 45}); err != nil {
 		t.Fatalf("set tank velocity: %v", err)
 	}
+	if err := w.SetHealth(e, Health{Current: 80, Max: 100}); err != nil {
+		t.Fatalf("set health: %v", err)
+	}
 	if err := w.SetCircleCollider(e, CircleCollider{Radius: 10}); err != nil {
 		t.Fatalf("set circle collider: %v", err)
 	}
 	if err := w.SetSolidObstacle(e); err != nil {
 		t.Fatalf("set solid obstacle: %v", err)
+	}
+	if err := w.SetAmbientLight(e, AmbientLight{Darkness: 0.5}); err != nil {
+		t.Fatalf("set ambient light: %v", err)
+	}
+	if err := w.SetPointLight(e, PointLight{Radius: 120, Intensity: 1, Color: LightColorWhite}); err != nil {
+		t.Fatalf("set point light: %v", err)
 	}
 
 	if ok := w.DestroyEntity(e); !ok {
@@ -93,12 +102,24 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 		t.Fatalf("tank velocity should be removed on destroy")
 	}
 
+	if _, ok := w.Health(e); ok {
+		t.Fatalf("health should be removed on destroy")
+	}
+
 	if _, ok := w.CircleCollider(e); ok {
 		t.Fatalf("circle collider should be removed on destroy")
 	}
 
 	if w.IsSolidObstacle(e) {
 		t.Fatalf("solid obstacle marker should be removed on destroy")
+	}
+
+	if _, ok := w.AmbientLight(e); ok {
+		t.Fatalf("ambient light should be removed on destroy")
+	}
+
+	if _, ok := w.PointLight(e); ok {
+		t.Fatalf("point light should be removed on destroy")
 	}
 
 	if ok := w.DestroyEntity(e); ok {
@@ -144,6 +165,11 @@ func TestSetComponentOnDeadEntityFails(t *testing.T) {
 		t.Fatalf("set tank velocity on dead entity should return ErrEntityNotAlive, got: %v", err)
 	}
 
+	err = w.SetHealth(999, Health{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set health on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
 	err = w.SetCircleCollider(999, CircleCollider{})
 	if !errors.Is(err, ErrEntityNotAlive) {
 		t.Fatalf("set circle collider on dead entity should return ErrEntityNotAlive, got: %v", err)
@@ -152,6 +178,16 @@ func TestSetComponentOnDeadEntityFails(t *testing.T) {
 	err = w.SetSolidObstacle(999)
 	if !errors.Is(err, ErrEntityNotAlive) {
 		t.Fatalf("set solid obstacle on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
+	err = w.SetAmbientLight(999, AmbientLight{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set ambient light on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
+	err = w.SetPointLight(999, PointLight{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set point light on dead entity should return ErrEntityNotAlive, got: %v", err)
 	}
 }
 
@@ -322,5 +358,73 @@ func TestColliderQueriesReturnExpectedBodies(t *testing.T) {
 	}
 	if obstacleBodies[0].Entity != obstacle {
 		t.Fatalf("unexpected obstacle collider entity: got %d want %d", obstacleBodies[0].Entity, obstacle)
+	}
+}
+
+func TestPointLightSourcesReturnsEntitiesWithTransformAndPointLight(t *testing.T) {
+	w := NewWorld()
+
+	e1 := w.CreateEntity()
+	e2 := w.CreateEntity()
+
+	if err := w.SetTransform(e1, Transform{X: 50, Y: 60}); err != nil {
+		t.Fatalf("set transform e1: %v", err)
+	}
+	if err := w.SetPointLight(e1, PointLight{Radius: 120, Intensity: 0.8, Color: LightColor{R: 1, G: 0.9, B: 0.7}}); err != nil {
+		t.Fatalf("set point light e1: %v", err)
+	}
+
+	if err := w.SetPointLight(e2, PointLight{Radius: 90, Intensity: 1, Color: LightColorWhite}); err != nil {
+		t.Fatalf("set point light e2: %v", err)
+	}
+
+	sources := w.PointLightSources()
+	if len(sources) != 1 {
+		t.Fatalf("expected 1 point light source with transform, got %d", len(sources))
+	}
+
+	if sources[0].Entity != e1 {
+		t.Fatalf("unexpected source entity: got %d want %d", sources[0].Entity, e1)
+	}
+}
+
+func TestTankHealthStatesReturnsOnlyTanksWithHealthAndTransform(t *testing.T) {
+	w := NewWorld()
+
+	e1 := w.CreateEntity()
+	e2 := w.CreateEntity()
+	e3 := w.CreateEntity()
+
+	if err := w.SetTransform(e1, Transform{X: 10, Y: 20}); err != nil {
+		t.Fatalf("set transform e1: %v", err)
+	}
+	if err := w.SetTankDrive(e1, TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}); err != nil {
+		t.Fatalf("set drive e1: %v", err)
+	}
+	if err := w.SetHealth(e1, Health{Current: 90, Max: 100}); err != nil {
+		t.Fatalf("set health e1: %v", err)
+	}
+
+	if err := w.SetTankDrive(e2, TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}); err != nil {
+		t.Fatalf("set drive e2: %v", err)
+	}
+	if err := w.SetHealth(e2, Health{Current: 50, Max: 100}); err != nil {
+		t.Fatalf("set health e2: %v", err)
+	}
+
+	if err := w.SetTransform(e3, Transform{X: 30, Y: 40}); err != nil {
+		t.Fatalf("set transform e3: %v", err)
+	}
+	if err := w.SetHealth(e3, Health{Current: 10, Max: 100}); err != nil {
+		t.Fatalf("set health e3: %v", err)
+	}
+
+	states := w.TankHealthStates()
+	if len(states) != 1 {
+		t.Fatalf("expected 1 tank health state, got %d", len(states))
+	}
+
+	if states[0].Entity != e1 {
+		t.Fatalf("unexpected tank health entity: got %d want %d", states[0].Entity, e1)
 	}
 }

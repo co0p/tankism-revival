@@ -46,6 +46,29 @@ type TankVelocity struct {
 	ForwardUnitsPerSecond float64
 }
 
+type Health struct {
+	Current float64
+	Max     float64
+}
+
+type LightColor struct {
+	R float64
+	G float64
+	B float64
+}
+
+var LightColorWhite = LightColor{R: 1, G: 1, B: 1}
+
+type AmbientLight struct {
+	Darkness float64
+}
+
+type PointLight struct {
+	Radius    float64
+	Intensity float64
+	Color     LightColor
+}
+
 type CircleCollider struct {
 	Radius float64
 }
@@ -54,6 +77,18 @@ type ColliderBody struct {
 	Entity    Entity
 	Transform Transform
 	Collider  CircleCollider
+}
+
+type PointLightSource struct {
+	Entity    Entity
+	Transform Transform
+	Light     PointLight
+}
+
+type TankHealthState struct {
+	Entity    Entity
+	Transform Transform
+	Health    Health
 }
 
 type Renderable struct {
@@ -82,8 +117,11 @@ type World struct {
 	acceleration map[Entity]TankAcceleration
 	deceleration map[Entity]TankDeceleration
 	velocity     map[Entity]TankVelocity
+	health       map[Entity]Health
 	colliders    map[Entity]CircleCollider
 	solid        map[Entity]struct{}
+	ambient      map[Entity]AmbientLight
+	pointLights  map[Entity]PointLight
 }
 
 func NewWorld() *World {
@@ -97,8 +135,11 @@ func NewWorld() *World {
 		acceleration: make(map[Entity]TankAcceleration),
 		deceleration: make(map[Entity]TankDeceleration),
 		velocity:     make(map[Entity]TankVelocity),
+		health:       make(map[Entity]Health),
 		colliders:    make(map[Entity]CircleCollider),
 		solid:        make(map[Entity]struct{}),
+		ambient:      make(map[Entity]AmbientLight),
+		pointLights:  make(map[Entity]PointLight),
 	}
 }
 
@@ -128,8 +169,11 @@ func (w *World) DestroyEntity(entity Entity) bool {
 	delete(w.acceleration, entity)
 	delete(w.deceleration, entity)
 	delete(w.velocity, entity)
+	delete(w.health, entity)
 	delete(w.colliders, entity)
 	delete(w.solid, entity)
+	delete(w.ambient, entity)
+	delete(w.pointLights, entity)
 
 	return true
 }
@@ -260,6 +304,24 @@ func (w *World) RemoveTankVelocity(entity Entity) {
 	delete(w.velocity, entity)
 }
 
+func (w *World) SetHealth(entity Entity, health Health) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.health[entity] = health
+	return nil
+}
+
+func (w *World) Health(entity Entity) (Health, bool) {
+	health, ok := w.health[entity]
+	return health, ok
+}
+
+func (w *World) RemoveHealth(entity Entity) {
+	delete(w.health, entity)
+}
+
 func (w *World) SetCircleCollider(entity Entity, collider CircleCollider) error {
 	if !w.IsAlive(entity) {
 		return ErrEntityNotAlive
@@ -294,6 +356,42 @@ func (w *World) IsSolidObstacle(entity Entity) bool {
 
 func (w *World) RemoveSolidObstacle(entity Entity) {
 	delete(w.solid, entity)
+}
+
+func (w *World) SetAmbientLight(entity Entity, light AmbientLight) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.ambient[entity] = light
+	return nil
+}
+
+func (w *World) AmbientLight(entity Entity) (AmbientLight, bool) {
+	light, ok := w.ambient[entity]
+	return light, ok
+}
+
+func (w *World) RemoveAmbientLight(entity Entity) {
+	delete(w.ambient, entity)
+}
+
+func (w *World) SetPointLight(entity Entity, light PointLight) error {
+	if !w.IsAlive(entity) {
+		return ErrEntityNotAlive
+	}
+
+	w.pointLights[entity] = light
+	return nil
+}
+
+func (w *World) PointLight(entity Entity) (PointLight, bool) {
+	light, ok := w.pointLights[entity]
+	return light, ok
+}
+
+func (w *World) RemovePointLight(entity Entity) {
+	delete(w.pointLights, entity)
 }
 
 func (w *World) Renderables() []Renderable {
@@ -440,4 +538,79 @@ func (w *World) SolidObstacleColliderBodies() []ColliderBody {
 	})
 
 	return bodies
+}
+
+func (w *World) AmbientLights() []AmbientLight {
+	lights := make([]AmbientLight, 0, len(w.ambient))
+
+	for _, light := range w.ambient {
+		lights = append(lights, light)
+	}
+
+	return lights
+}
+
+func (w *World) PointLightSources() []PointLightSource {
+	sources := make([]PointLightSource, 0, len(w.pointLights))
+
+	for entity, light := range w.pointLights {
+		transform, hasTransform := w.transforms[entity]
+		if !hasTransform {
+			continue
+		}
+
+		sources = append(sources, PointLightSource{
+			Entity:    entity,
+			Transform: transform,
+			Light:     light,
+		})
+	}
+
+	slices.SortFunc(sources, func(a, b PointLightSource) int {
+		if a.Entity < b.Entity {
+			return -1
+		}
+		if a.Entity > b.Entity {
+			return 1
+		}
+
+		return 0
+	})
+
+	return sources
+}
+
+func (w *World) TankHealthStates() []TankHealthState {
+	states := make([]TankHealthState, 0, len(w.health))
+
+	for entity := range w.drives {
+		health, hasHealth := w.health[entity]
+		if !hasHealth {
+			continue
+		}
+
+		transform, hasTransform := w.transforms[entity]
+		if !hasTransform {
+			continue
+		}
+
+		states = append(states, TankHealthState{
+			Entity:    entity,
+			Transform: transform,
+			Health:    health,
+		})
+	}
+
+	slices.SortFunc(states, func(a, b TankHealthState) int {
+		if a.Entity < b.Entity {
+			return -1
+		}
+		if a.Entity > b.Entity {
+			return 1
+		}
+
+		return 0
+	})
+
+	return states
 }
