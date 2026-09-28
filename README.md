@@ -15,6 +15,11 @@ The first release includes player movement and firing, enemy hunters, obstacles,
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): implementation slices and completion criteria.
 - [`docs/adr/`](docs/adr): durable architecture decisions.
 
+## Assets
+
+- Current player placeholder sprite: `resources/images/kenney_topdown_tanks_redux/tank_red_small.png`
+- Attribution and license details: [`resources/ATTRIBUTION.md`](resources/ATTRIBUTION.md)
+
 ## Local commands
 
 Run these from the repository root:
