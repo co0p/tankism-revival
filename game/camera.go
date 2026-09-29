@@ -14,12 +14,12 @@ func NewCamera(viewWidth, viewHeight float64) Camera {
 	}
 }
 
-func (c *Camera) FollowTarget(worldMap Map, targetX, targetY float64) {
+func (c *Camera) FollowTarget(mapWidth, mapHeight, targetX, targetY float64) {
 	wantedX := targetX - c.ViewWidth/2
 	wantedY := targetY - c.ViewHeight/2
 
-	maxX := worldMap.Width - c.ViewWidth
-	maxY := worldMap.Height - c.ViewHeight
+	maxX := mapWidth - c.ViewWidth
+	maxY := mapHeight - c.ViewHeight
 
 	if maxX < 0 {
 		maxX = 0

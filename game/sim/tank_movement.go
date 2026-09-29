@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func IntegrateTankMovement(world *ecs.World, deltaSeconds float64) {
@@ -36,7 +37,7 @@ func IntegrateTankMovement(world *ecs.World, deltaSeconds float64) {
 		transform.Y += forwardY * distance
 
 		_ = world.SetTransform(mover.Entity, transform)
-		_ = world.SetTankVelocity(mover.Entity, ecs.TankVelocity{ForwardUnitsPerSecond: forwardSpeed})
+		_ = world.SetTankVelocity(mover.Entity, ecscomponents.TankVelocity{ForwardUnitsPerSecond: forwardSpeed})
 	}
 }
 

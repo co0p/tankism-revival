@@ -1,18 +1,30 @@
 package game
 
+import "github.com/co0p/tankism-revival/lib/gamepalette"
+
 const (
-	SpriteTankRedSmall  = "tank_red_small"
-	SpriteTankBlueSmall = "tank_blue_small"
-	SpriteTileGrass1    = "tile_grass_1"
-	SpriteTileGrass2    = "tile_grass_2"
+	SpriteTankRedSmall  = gamepalette.SpriteTankRedSmall
+	SpriteTankBlueSmall = gamepalette.SpriteTankBlueSmall
+	SpriteTileGrass1    = gamepalette.SpriteTileGrass1
+	SpriteTileGrass2    = gamepalette.SpriteTileGrass2
 
-	SpriteObstacleBarrelRedTop = "obstacle_barrel_red_top"
-	SpriteObstacleFenceRed     = "obstacle_fence_red"
-	SpriteObstacleCrateWood    = "obstacle_crate_wood"
+	SpriteObstacleBarrelGrayTop  = gamepalette.SpriteObstacleBarrelGrayTop
+	SpriteObstacleFenceRed       = gamepalette.SpriteObstacleFenceRed
+	SpriteObstacleCrateWood      = gamepalette.SpriteObstacleCrateWood
+	SpriteObstacleTreeGreenLarge = gamepalette.SpriteObstacleTreeGreenLarge
+	SpriteObstacleTreeGreenSmall = gamepalette.SpriteObstacleTreeGreenSmall
+	SpriteObstacleTreeBrownLarge = gamepalette.SpriteObstacleTreeBrownLarge
+	SpriteObstacleTreeBrownSmall = gamepalette.SpriteObstacleTreeBrownSmall
+	SpriteObstacleWireStraight   = gamepalette.SpriteObstacleWireStraight
+	SpriteObstacleWireCrooked    = gamepalette.SpriteObstacleWireCrooked
+	SpriteObstacleTankCrossMetal = gamepalette.SpriteObstacleTankCrossMetal
 
-	SpriteProjectileRed  = "projectile_red"
-	SpriteProjectileBlue = "projectile_blue"
+	// Kept for compatibility with previous naming.
+	SpriteObstacleBarrelRedTop = SpriteObstacleBarrelGrayTop
 
-	SpriteShotRed    = "shot_red"
-	SpriteShotOrange = "shot_orange"
+	SpriteProjectileRed  = gamepalette.SpriteProjectileRed
+	SpriteProjectileBlue = gamepalette.SpriteProjectileBlue
+
+	SpriteShotRed    = gamepalette.SpriteShotRed
+	SpriteShotOrange = gamepalette.SpriteShotOrange
 )

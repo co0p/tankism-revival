@@ -1,0 +1,11 @@
+Top Down Shooter collection asset: "Cannon fire"
+
+Author: Thimras
+Source page: https://opengameart.org/content/cannon-fire
+Collection page: https://opengameart.org/content/top-down-shooter-0
+
+License: Creative Commons CC0 1.0
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+
+Original downloadable file URL:
+https://opengameart.org/sites/default/files/cannon_fire_0.ogg

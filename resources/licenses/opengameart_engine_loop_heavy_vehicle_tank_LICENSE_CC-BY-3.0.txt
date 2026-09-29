@@ -1,0 +1,13 @@
+Engine-loop heavy vehicle/tank
+
+Author: Nayckron (collaborator: qubodup)
+Source page: https://opengameart.org/content/engine-loop-heavy-vehicletank
+Collection page: https://opengameart.org/content/top-down-shooter-0
+
+License selected for this repository use: Creative Commons Attribution 3.0 (CC-BY 3.0)
+License URL: https://creativecommons.org/licenses/by/3.0/
+
+Original downloadable file URL:
+https://opengameart.org/sites/default/files/engine_heavy_loop_1.ogg
+
+Note: the source page also lists GPL 3.0 as an available license option.

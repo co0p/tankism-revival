@@ -5,8 +5,8 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/co0p/tankism-revival/game"
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -19,7 +19,13 @@ const (
 	defaultHealthBarHeight     = 4.0
 	defaultHealthBarYOffset    = 30.0
 	defaultHealthBarBorderSize = 1.0
+
+	defaultForegroundMinZIndex = 50
 )
+
+type Camera interface {
+	WorldToScreen(worldX, worldY float64) (float64, float64)
+}
 
 type Config struct {
 	OutsideMapColor color.RGBA
@@ -31,6 +37,8 @@ type Config struct {
 	HealthBarHeight     float64
 	HealthBarYOffset    float64
 	HealthBarBorderSize float64
+
+	ForegroundMinZIndex int
 }
 
 type WorldRenderer struct {
@@ -40,6 +48,7 @@ type WorldRenderer struct {
 	lightSprite     *ebiten.Image
 
 	lightIntensityScale float64
+	foregroundMinZIndex int
 
 	healthBarWidth      float64
 	healthBarHeight     float64
@@ -66,6 +75,9 @@ func NewWorldRenderer(sprites map[string]*ebiten.Image, cfg Config) *WorldRender
 	if cfg.HealthBarBorderSize <= 0 {
 		cfg.HealthBarBorderSize = defaultHealthBarBorderSize
 	}
+	if cfg.ForegroundMinZIndex <= 0 {
+		cfg.ForegroundMinZIndex = defaultForegroundMinZIndex
+	}
 
 	spriteMap := make(map[string]*ebiten.Image, len(sprites))
 	for spriteID, img := range sprites {
@@ -77,6 +89,7 @@ func NewWorldRenderer(sprites map[string]*ebiten.Image, cfg Config) *WorldRender
 		outsideMapColor:     cfg.OutsideMapColor,
 		lightSprite:         newRadialLightSprite(cfg.LightSpriteSize),
 		lightIntensityScale: cfg.LightIntensityScale,
+		foregroundMinZIndex: cfg.ForegroundMinZIndex,
 		healthBarWidth:      cfg.HealthBarWidth,
 		healthBarHeight:     cfg.HealthBarHeight,
 		healthBarYOffset:    cfg.HealthBarYOffset,
@@ -84,18 +97,18 @@ func NewWorldRenderer(sprites map[string]*ebiten.Image, cfg Config) *WorldRender
 	}
 }
 
-func (r *WorldRenderer) Draw(screen *ebiten.Image, world *ecs.World, camera game.Camera) {
+func (r *WorldRenderer) Draw(screen *ebiten.Image, world *ecs.World, camera Camera) {
 	screen.Fill(r.outsideMapColor)
 
 	r.drawRenderables(screen, world, camera, nil)
 	r.drawLighting(screen, world, camera)
 	r.drawRenderables(screen, world, camera, func(renderable ecs.Renderable) bool {
-		return renderable.Sprite.ZIndex >= game.ZIndexObstacles
+		return renderable.Sprite.ZIndex >= r.foregroundMinZIndex
 	})
 	r.drawTankHealthBars(screen, world, camera)
 }
 
-func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, camera game.Camera, include func(ecs.Renderable) bool) {
+func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, camera Camera, include func(ecs.Renderable) bool) {
 	for _, renderable := range world.Renderables() {
 		if include != nil && !include(renderable) {
 			continue
@@ -131,17 +144,13 @@ func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, 
 	}
 }
 
-func (r *WorldRenderer) drawLighting(screen *ebiten.Image, world *ecs.World, camera game.Camera) {
+func (r *WorldRenderer) drawLighting(screen *ebiten.Image, world *ecs.World, camera Camera) {
 	ambientDarkness := combinedAmbientDarkness(world.AmbientLights())
 	if ambientDarkness > 0 {
 		overlayAlpha := uint8(clamp01(ambientDarkness) * 255)
-		viewWidth := camera.ViewWidth
-		viewHeight := camera.ViewHeight
-		if viewWidth <= 0 || viewHeight <= 0 {
-			bounds := screen.Bounds()
-			viewWidth = float64(bounds.Dx())
-			viewHeight = float64(bounds.Dy())
-		}
+		bounds := screen.Bounds()
+		viewWidth := float64(bounds.Dx())
+		viewHeight := float64(bounds.Dy())
 
 		ebitenutil.DrawRect(
 			screen,
@@ -188,7 +197,7 @@ func (r *WorldRenderer) drawLighting(screen *ebiten.Image, world *ecs.World, cam
 	}
 }
 
-func (r *WorldRenderer) drawTankHealthBars(screen *ebiten.Image, world *ecs.World, camera game.Camera) {
+func (r *WorldRenderer) drawTankHealthBars(screen *ebiten.Image, world *ecs.World, camera Camera) {
 	for _, state := range world.TankHealthStates() {
 		if state.Health.Max <= 0 {
 			continue
@@ -242,7 +251,7 @@ func healthColor(ratio float64) color.RGBA {
 	return color.RGBA{R: 0xdf, G: 0x54, B: 0x54, A: 0xff}
 }
 
-func combinedAmbientDarkness(lights []ecs.AmbientLight) float64 {
+func combinedAmbientDarkness(lights []ecscomponents.AmbientLight) float64 {
 	if len(lights) == 0 {
 		return 0
 	}

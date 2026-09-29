@@ -1,58 +1,39 @@
 # Tankism agent guide
 
-This repository is an agentically developed learning project: build a fun, compact top-down tank game in Go with Ebitengine while keeping the ECS, collision, effects, and rendering code understandable.
+Build a compact, playable top-down tank game in small learning slices.
 
 ## Read first
 
-1. `README.md` — project intent and local commands.
-2. `docs/DESIGN.md` — playable target, scope, and technical model.
-3. `docs/ROADMAP.md` — ordered thin slices; choose the first unblocked item.
-4. `docs/adr/` — accepted decisions and their reasons.
+1. `README.md`
+2. `docs/DESIGN.md`
+3. `docs/ROADMAP.md` (pick first unblocked slice)
+4. `docs/adr/` (architecture source of truth)
 
-Code and tests are the authority for implemented behavior. Documentation is the authority for intended behavior only where code does not exist yet.
+Code + tests are authoritative for current behavior.
 
-## Operating rules
+## Core rules (with ADR references)
 
-- Deliver one small, playable vertical slice at a time. Do not build a generic engine first.
-- Before coding, state the slice's acceptance criteria and learning question in the pull request, task note, or handoff.
-- Keep game rules testable without Ebitengine, a GPU, a window, live input, or audio hardware.
-- ECS entities are IDs; components are plain data; systems are ordered behavior. Do not place gameplay rules in render or input code.
-- Keep system order explicit in one update pipeline. Changes to system order are gameplay changes and need tests or documented reasoning.
-- Prefer a minimal in-house ECS for the MVP. Do not add an ECS, physics, or particle dependency without an ADR.
-- Use straightforward collision and effects implementations first; profile before adding pooling, spatial indexes, shaders, or parallelism.
-- Do not expand MVP scope to multiplayer, progression, procedural levels, or a general-purpose editor/engine.
-- Add source and license information before adding any external asset.
-- Preserve existing user changes. Do not revert, reset, or overwrite unrelated work.
+- Deliver one small playable slice at a time; no speculative engine work.
+- Keep gameplay deterministic and framework-independent in core logic ([ADR 0002](docs/adr/0002-deterministic-core-framework-edges.md)).
+- Keep ECS minimal and in-house: entities are IDs, components are data, systems are ordered behavior ([ADR 0001](docs/adr/0001-minimal-in-house-ecs.md), [ADR 0005](docs/adr/0005-explicit-ecs-boundaries-and-ordered-pipeline.md)).
+- Keep one explicit simulation pipeline; order/dependency changes require tests or rationale ([ADR 0005](docs/adr/0005-explicit-ecs-boundaries-and-ordered-pipeline.md)).
+- Load assets at composition root using `resources` + `lib` loaders; gameplay stores IDs, not framework handles ([ADR 0004](docs/adr/0004-resource-loading-at-composition-root.md)).
+- Preserve package dependency direction; avoid upward imports and cycles ([ADR 0006](docs/adr/0006-go-package-dependency-direction.md)).
+- Do not expand MVP scope (no multiplayer/progression/procgen/editor-engine).
+- Add attribution + license files for every external asset before use.
+- Preserve user changes; do not revert unrelated work.
 
-## Expected layout
+## Package intent (short)
 
-```text
-app/tankism/       executable and composition root
-game/              pure Tankism world, ECS, rules, and systems
-game/input/        Ebitengine input adapter and input snapshots
-game/render/       Ebitengine-only rendering, lighting, and particles
-resources/         assets and ATTRIBUTION.md
-docs/              design, roadmap, and architecture decisions
-```
+- `app/tankism/`: process entrypoint only.
+- `app/mapism/`: map editor entrypoint only.
+- `game/`: runtime composition and loop orchestration.
+- `game/ecs`, `game/sim`, `game/worldseed`: pure gameplay/core.
+- `game/input`, `game/render`: Ebitengine adapters.
+- `lib/`: reusable loaders/helpers.
+- `resources/`: embedded assets + attribution/licenses.
 
-Create packages only when a current slice needs them. `game/` must not import `app/tankism/`; pure simulation packages must not import Ebitengine.
-
-## Default update model
-
-1. Capture live input into an input snapshot.
-2. Produce player and AI intent.
-3. Advance cooldowns and create spawn requests.
-4. Integrate movement.
-5. Detect and resolve collisions; apply damage.
-6. Expire projectiles, particles, and destroyed entities.
-7. Evaluate win/lose/restart state.
-8. Render world, lights/effects, and UI from current state.
-
-Start with center-based positions, radians, and positive clockwise screen rotation; confirm these conventions with tests before collision or rendering expands.
-
-## Verification and handoff
-
-For every completed code slice:
+## Verification + handoff
 
 ```sh
 gofmt -w <changed-go-files>
@@ -61,4 +42,4 @@ go build ./...
 go run ./app/tankism
 ```
 
-Run the commands that exist; record exact blockers rather than claiming unrun checks passed. Manually verify visual/audio changes. A handoff must list the outcome, learning result, files changed, checks run, known risks, and the next smallest roadmap item.
+If a check cannot run, report exact blocker. Handoff should include outcome, files changed, checks run, risks, and next smallest slice.

@@ -5,19 +5,20 @@ import (
 	"testing"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func TestResolveTankObstacleCollisionsPushesTankOut(t *testing.T) {
 	w := ecs.NewWorld()
 
 	tank := w.CreateEntity()
-	must(t, w.SetTransform(tank, ecs.Transform{X: 0, Y: 0}))
-	must(t, w.SetTankDrive(tank, ecs.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
-	must(t, w.SetCircleCollider(tank, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(tank, ecscomponents.Transform{X: 0, Y: 0}))
+	must(t, w.SetTankDrive(tank, ecscomponents.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetCircleCollider(tank, ecscomponents.CircleCollider{Radius: 10}))
 
 	obstacle := w.CreateEntity()
-	must(t, w.SetTransform(obstacle, ecs.Transform{X: 15, Y: 0}))
-	must(t, w.SetCircleCollider(obstacle, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(obstacle, ecscomponents.Transform{X: 15, Y: 0}))
+	must(t, w.SetCircleCollider(obstacle, ecscomponents.CircleCollider{Radius: 10}))
 	must(t, w.SetSolidObstacle(obstacle))
 
 	if err := ResolveTankObstacleCollisions(w); err != nil {
@@ -37,13 +38,13 @@ func TestResolveTankObstacleCollisionsNoOverlapDoesNotMoveTank(t *testing.T) {
 	w := ecs.NewWorld()
 
 	tank := w.CreateEntity()
-	must(t, w.SetTransform(tank, ecs.Transform{X: 0, Y: 0}))
-	must(t, w.SetTankDrive(tank, ecs.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
-	must(t, w.SetCircleCollider(tank, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(tank, ecscomponents.Transform{X: 0, Y: 0}))
+	must(t, w.SetTankDrive(tank, ecscomponents.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetCircleCollider(tank, ecscomponents.CircleCollider{Radius: 10}))
 
 	obstacle := w.CreateEntity()
-	must(t, w.SetTransform(obstacle, ecs.Transform{X: 40, Y: 0}))
-	must(t, w.SetCircleCollider(obstacle, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(obstacle, ecscomponents.Transform{X: 40, Y: 0}))
+	must(t, w.SetCircleCollider(obstacle, ecscomponents.CircleCollider{Radius: 10}))
 	must(t, w.SetSolidObstacle(obstacle))
 
 	if err := ResolveTankObstacleCollisions(w); err != nil {
@@ -63,13 +64,13 @@ func TestResolveTankObstacleCollisionsHandlesCoincidentCenters(t *testing.T) {
 	w := ecs.NewWorld()
 
 	tank := w.CreateEntity()
-	must(t, w.SetTransform(tank, ecs.Transform{X: 10, Y: 10}))
-	must(t, w.SetTankDrive(tank, ecs.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
-	must(t, w.SetCircleCollider(tank, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(tank, ecscomponents.Transform{X: 10, Y: 10}))
+	must(t, w.SetTankDrive(tank, ecscomponents.TankDrive{MoveSpeed: 1, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetCircleCollider(tank, ecscomponents.CircleCollider{Radius: 10}))
 
 	obstacle := w.CreateEntity()
-	must(t, w.SetTransform(obstacle, ecs.Transform{X: 10, Y: 10}))
-	must(t, w.SetCircleCollider(obstacle, ecs.CircleCollider{Radius: 10}))
+	must(t, w.SetTransform(obstacle, ecscomponents.Transform{X: 10, Y: 10}))
+	must(t, w.SetCircleCollider(obstacle, ecscomponents.CircleCollider{Radius: 10}))
 	must(t, w.SetSolidObstacle(obstacle))
 
 	if err := ResolveTankObstacleCollisions(w); err != nil {

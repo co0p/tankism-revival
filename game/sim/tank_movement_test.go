@@ -5,15 +5,16 @@ import (
 	"testing"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func TestIntegrateTankMovementMovesForwardFromZeroRotation(t *testing.T) {
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 480, Y: 270, RotationRadians: 0}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: math.Pi}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 1, Turn: 0}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 480, Y: 270, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: math.Pi}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: 1, Turn: 0}))
 
 	IntegrateTankMovement(w, 1)
 
@@ -34,9 +35,9 @@ func TestIntegrateTankMovementRotatesClockwiseAndWraps(t *testing.T) {
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 2*math.Pi - 0.1}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 0, TurnSpeedRadiansPS: 1}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 0, Turn: 1}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 2*math.Pi - 0.1}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 0, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: 0, Turn: 1}))
 
 	IntegrateTankMovement(w, 1)
 
@@ -56,9 +57,9 @@ func TestIntegrateTankMovementClampsIntentToUnitRange(t *testing.T) {
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 10, Y: 10, RotationRadians: 0}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 100, TurnSpeedRadiansPS: math.Pi}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 3, Turn: -2}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 10, Y: 10, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 100, TurnSpeedRadiansPS: math.Pi}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: 3, Turn: -2}))
 
 	IntegrateTankMovement(w, 0.5)
 
@@ -78,11 +79,11 @@ func TestIntegrateTankMovementUsesAccelerationToRampSpeed(t *testing.T) {
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
-	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 60}))
-	must(t, w.SetTankVelocity(e, ecs.TankVelocity{}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 1, Turn: 0}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecscomponents.TankAcceleration{ForwardUnitsPerSecondSquared: 60}))
+	must(t, w.SetTankVelocity(e, ecscomponents.TankVelocity{}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: 1, Turn: 0}))
 
 	IntegrateTankMovement(w, 1)
 
@@ -117,12 +118,12 @@ func TestIntegrateTankMovementUsesCoastDecelerationWhenThrottleReleased(t *testi
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 160, TurnSpeedRadiansPS: 0}))
-	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 300}))
-	must(t, w.SetTankDeceleration(e, ecs.TankDeceleration{CoastUnitsPerSecondSquared: 40, BrakeUnitsPerSecondSquared: 300}))
-	must(t, w.SetTankVelocity(e, ecs.TankVelocity{ForwardUnitsPerSecond: 100}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: 0, Turn: 0}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 160, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecscomponents.TankAcceleration{ForwardUnitsPerSecondSquared: 300}))
+	must(t, w.SetTankDeceleration(e, ecscomponents.TankDeceleration{CoastUnitsPerSecondSquared: 40, BrakeUnitsPerSecondSquared: 300}))
+	must(t, w.SetTankVelocity(e, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 100}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: 0, Turn: 0}))
 
 	IntegrateTankMovement(w, 1)
 
@@ -143,12 +144,12 @@ func TestIntegrateTankMovementUsesBrakeDecelerationForDirectionChange(t *testing
 	w := ecs.NewWorld()
 	e := w.CreateEntity()
 
-	must(t, w.SetTransform(e, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
-	must(t, w.SetTankDrive(e, ecs.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
-	must(t, w.SetTankAcceleration(e, ecs.TankAcceleration{ForwardUnitsPerSecondSquared: 50}))
-	must(t, w.SetTankDeceleration(e, ecs.TankDeceleration{CoastUnitsPerSecondSquared: 30, BrakeUnitsPerSecondSquared: 150}))
-	must(t, w.SetTankVelocity(e, ecs.TankVelocity{ForwardUnitsPerSecond: 100}))
-	must(t, w.SetTankControlIntent(e, ecs.TankControlIntent{Throttle: -1, Turn: 0}))
+	must(t, w.SetTransform(e, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTankDrive(e, ecscomponents.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 0}))
+	must(t, w.SetTankAcceleration(e, ecscomponents.TankAcceleration{ForwardUnitsPerSecondSquared: 50}))
+	must(t, w.SetTankDeceleration(e, ecscomponents.TankDeceleration{CoastUnitsPerSecondSquared: 30, BrakeUnitsPerSecondSquared: 150}))
+	must(t, w.SetTankVelocity(e, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 100}))
+	must(t, w.SetTankControlIntent(e, ecscomponents.TankControlIntent{Throttle: -1, Turn: 0}))
 
 	IntegrateTankMovement(w, 1)
 

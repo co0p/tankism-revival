@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/co0p/tankism-revival/game"
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 type GrassConfig struct {
@@ -18,7 +18,7 @@ type GrassConfig struct {
 	ZIndex          int
 }
 
-func SeedGrassMap(world *ecs.World, worldMap game.Map, cfg GrassConfig) error {
+func SeedGrassMap(world *ecs.World, mapWidth, mapHeight float64, cfg GrassConfig) error {
 	if cfg.TileWidth <= 0 || cfg.TileHeight <= 0 {
 		return fmt.Errorf("invalid tile size %dx%d", cfg.TileWidth, cfg.TileHeight)
 	}
@@ -28,8 +28,8 @@ func SeedGrassMap(world *ecs.World, worldMap game.Map, cfg GrassConfig) error {
 
 	rng := rand.New(rand.NewSource(cfg.Seed))
 
-	columns := int(math.Ceil(worldMap.Width / float64(cfg.TileWidth)))
-	rows := int(math.Ceil(worldMap.Height / float64(cfg.TileHeight)))
+	columns := int(math.Ceil(mapWidth / float64(cfg.TileWidth)))
+	rows := int(math.Ceil(mapHeight / float64(cfg.TileHeight)))
 
 	for row := 0; row < rows; row++ {
 		for col := 0; col < columns; col++ {
@@ -38,7 +38,7 @@ func SeedGrassMap(world *ecs.World, worldMap game.Map, cfg GrassConfig) error {
 			worldX := (float64(col) + 0.5) * float64(cfg.TileWidth)
 			worldY := (float64(row) + 0.5) * float64(cfg.TileHeight)
 
-			if err := world.SetTransform(entity, ecs.Transform{X: worldX, Y: worldY, RotationRadians: 0}); err != nil {
+			if err := world.SetTransform(entity, ecscomponents.Transform{X: worldX, Y: worldY, RotationRadians: 0}); err != nil {
 				return err
 			}
 
@@ -51,7 +51,7 @@ func SeedGrassMap(world *ecs.World, worldMap game.Map, cfg GrassConfig) error {
 			flipX := rng.Intn(2) == 1
 			flipY := rng.Intn(2) == 1
 
-			if err := world.SetSpriteRenderer(entity, ecs.SpriteRenderer{
+			if err := world.SetSpriteRenderer(entity, ecscomponents.SpriteRenderer{
 				SpriteID:              spriteID,
 				ZIndex:                cfg.ZIndex,
 				RotationOffsetRadians: rotationOffset,
@@ -86,11 +86,11 @@ type ObstacleConfig struct {
 	BackLightIntensity       float64
 	BackLightIntensityJitter float64
 	BackLightYOffset         float64
-	BackLightColorBase       ecs.LightColor
-	BackLightColorJitter     ecs.LightColor
+	BackLightColorBase       ecscomponents.LightColor
+	BackLightColorJitter     ecscomponents.LightColor
 }
 
-func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) error {
+func SeedObstacles(world *ecs.World, mapWidth, mapHeight float64, cfg ObstacleConfig) error {
 	if cfg.CountPerType <= 0 {
 		return nil
 	}
@@ -111,8 +111,8 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 		}
 
 		for range cfg.PlacementAttempts {
-			x := cfg.EdgeMargin + rng.Float64()*(worldMap.Width-2*cfg.EdgeMargin)
-			y := cfg.EdgeMargin + rng.Float64()*(worldMap.Height-2*cfg.EdgeMargin)
+			x := cfg.EdgeMargin + rng.Float64()*(mapWidth-2*cfg.EdgeMargin)
+			y := cfg.EdgeMargin + rng.Float64()*(mapHeight-2*cfg.EdgeMargin)
 
 			dx := x - cfg.SpawnX
 			dy := y - cfg.SpawnY
@@ -127,7 +127,7 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 			}
 
 			entity := world.CreateEntity()
-			if err := world.SetTransform(entity, ecs.Transform{X: x, Y: y, RotationRadians: 0}); err != nil {
+			if err := world.SetTransform(entity, ecscomponents.Transform{X: x, Y: y, RotationRadians: 0}); err != nil {
 				return err
 			}
 
@@ -135,7 +135,7 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 			flipX := rng.Intn(2) == 1
 			flipY := rng.Intn(2) == 1
 
-			if err := world.SetSpriteRenderer(entity, ecs.SpriteRenderer{
+			if err := world.SetSpriteRenderer(entity, ecscomponents.SpriteRenderer{
 				SpriteID:              spriteID,
 				ZIndex:                cfg.ZIndex,
 				RotationOffsetRadians: rotationOffset,
@@ -145,7 +145,7 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 				return err
 			}
 
-			if err := world.SetCircleCollider(entity, ecs.CircleCollider{Radius: radius}); err != nil {
+			if err := world.SetCircleCollider(entity, ecscomponents.CircleCollider{Radius: radius}); err != nil {
 				return err
 			}
 
@@ -156,7 +156,7 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 			if rng.Float64() < cfg.BackLightChance {
 				lightIntensity := cfg.BackLightIntensity + rng.Float64()*cfg.BackLightIntensityJitter
 				lightEntity := world.CreateEntity()
-				if err := world.SetTransform(lightEntity, ecs.Transform{
+				if err := world.SetTransform(lightEntity, ecscomponents.Transform{
 					X:               x,
 					Y:               y + cfg.BackLightYOffset,
 					RotationRadians: 0,
@@ -164,10 +164,10 @@ func SeedObstacles(world *ecs.World, worldMap game.Map, cfg ObstacleConfig) erro
 					return err
 				}
 
-				if err := world.SetPointLight(lightEntity, ecs.PointLight{
+				if err := world.SetPointLight(lightEntity, ecscomponents.PointLight{
 					Radius:    cfg.BackLightRadius,
 					Intensity: lightIntensity,
-					Color: ecs.LightColor{
+					Color: ecscomponents.LightColor{
 						R: cfg.BackLightColorBase.R + rng.Float64()*cfg.BackLightColorJitter.R,
 						G: cfg.BackLightColorBase.G + rng.Float64()*cfg.BackLightColorJitter.G,
 						B: cfg.BackLightColorBase.B + rng.Float64()*cfg.BackLightColorJitter.B,

@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, projectileZIndex, muzzleFlashZIndex int) error {
@@ -27,11 +28,11 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 
 			projectile := world.CreateEntity()
 
-			if err := world.SetTransform(projectile, ecs.Transform{X: spawnX, Y: spawnY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
+			if err := world.SetTransform(projectile, ecscomponents.Transform{X: spawnX, Y: spawnY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
 				return fmt.Errorf("set projectile transform: %w", err)
 			}
 
-			if err := world.SetSpriteRenderer(projectile, ecs.SpriteRenderer{
+			if err := world.SetSpriteRenderer(projectile, ecscomponents.SpriteRenderer{
 				SpriteID:              weapon.ProjectileSpriteID,
 				ZIndex:                projectileZIndex,
 				RotationOffsetRadians: 0,
@@ -39,11 +40,11 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 				return fmt.Errorf("set projectile sprite: %w", err)
 			}
 
-			if err := world.SetCircleCollider(projectile, ecs.CircleCollider{Radius: weapon.ProjectileRadius}); err != nil {
+			if err := world.SetCircleCollider(projectile, ecscomponents.CircleCollider{Radius: weapon.ProjectileRadius}); err != nil {
 				return fmt.Errorf("set projectile collider: %w", err)
 			}
 
-			if err := world.SetProjectile(projectile, ecs.Projectile{
+			if err := world.SetProjectile(projectile, ecscomponents.Projectile{
 				Owner:             tank.Entity,
 				VelocityX:         forwardX * weapon.ProjectileSpeed,
 				VelocityY:         forwardY * weapon.ProjectileSpeed,
@@ -54,7 +55,7 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 			}
 
 			if weapon.ProjectileLightRadius > 0 && weapon.ProjectileLightIntensity > 0 {
-				if err := world.SetPointLight(projectile, ecs.PointLight{
+				if err := world.SetPointLight(projectile, ecscomponents.PointLight{
 					Radius:    weapon.ProjectileLightRadius,
 					Intensity: weapon.ProjectileLightIntensity,
 					Color:     weapon.ProjectileLightColor,
@@ -68,12 +69,12 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 				muzzleFlashY := spawnY + forwardY*weapon.MuzzleFlashOffset
 
 				muzzleFlash := world.CreateEntity()
-				if err := world.SetTransform(muzzleFlash, ecs.Transform{X: muzzleFlashX, Y: muzzleFlashY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
+				if err := world.SetTransform(muzzleFlash, ecscomponents.Transform{X: muzzleFlashX, Y: muzzleFlashY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
 					return fmt.Errorf("set muzzle flash transform: %w", err)
 				}
 
 				if weapon.MuzzleFlashSpriteID != "" {
-					if err := world.SetSpriteRenderer(muzzleFlash, ecs.SpriteRenderer{
+					if err := world.SetSpriteRenderer(muzzleFlash, ecscomponents.SpriteRenderer{
 						SpriteID:              weapon.MuzzleFlashSpriteID,
 						ZIndex:                muzzleFlashZIndex,
 						RotationOffsetRadians: math.Pi,
@@ -82,12 +83,12 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 					}
 				}
 
-				if err := world.SetLifetime(muzzleFlash, ecs.Lifetime{RemainingSeconds: weapon.MuzzleFlashLifetime}); err != nil {
+				if err := world.SetLifetime(muzzleFlash, ecscomponents.Lifetime{RemainingSeconds: weapon.MuzzleFlashLifetime}); err != nil {
 					return fmt.Errorf("set muzzle flash lifetime: %w", err)
 				}
 
 				if weapon.MuzzleFlashLightRadius > 0 && weapon.MuzzleFlashLightIntensity > 0 {
-					if err := world.SetPointLight(muzzleFlash, ecs.PointLight{
+					if err := world.SetPointLight(muzzleFlash, ecscomponents.PointLight{
 						Radius:    weapon.MuzzleFlashLightRadius,
 						Intensity: weapon.MuzzleFlashLightIntensity,
 						Color:     weapon.MuzzleFlashLightColor,
@@ -98,6 +99,19 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 			}
 
 			weapon.CooldownRemaining = weapon.CooldownSeconds
+
+			if audioPlayer, ok := world.AudioPlayer(tank.Entity); ok && audioPlayer.ShootSoundID != "" {
+				soundVolume := audioPlayer.Volume
+				if soundVolume <= 0 {
+					soundVolume = 1
+				}
+				if err := world.SetPlaySoundIntent(tank.Entity, ecscomponents.PlaySoundIntent{
+					SoundID: audioPlayer.ShootSoundID,
+					Volume:  soundVolume,
+				}); err != nil {
+					return fmt.Errorf("set play sound intent: %w", err)
+				}
+			}
 		}
 
 		if err := world.SetWeapon(tank.Entity, weapon); err != nil {
@@ -196,7 +210,7 @@ func ResolveProjectileImpacts(world *ecs.World) error {
 	return nil
 }
 
-func canSpawnProjectile(weapon ecs.Weapon) bool {
+func canSpawnProjectile(weapon ecscomponents.Weapon) bool {
 	return weapon.ProjectileSpeed > 0 &&
 		weapon.ProjectileLifetime > 0 &&
 		weapon.ProjectileDamage > 0 &&
@@ -204,7 +218,7 @@ func canSpawnProjectile(weapon ecs.Weapon) bool {
 		weapon.ProjectileSpriteID != ""
 }
 
-func shouldSpawnMuzzleFlash(weapon ecs.Weapon) bool {
+func shouldSpawnMuzzleFlash(weapon ecscomponents.Weapon) bool {
 	if weapon.MuzzleFlashLifetime <= 0 {
 		return false
 	}

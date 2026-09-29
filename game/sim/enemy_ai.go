@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func UpdateChaserIntent(world *ecs.World, chaser, target ecs.Entity, stopDistance float64) error {
@@ -22,7 +23,7 @@ func UpdateChaserIntent(world *ecs.World, chaser, target ecs.Entity, stopDistanc
 	dy := targetTransform.Y - chaserTransform.Y
 	distanceSquared := dx*dx + dy*dy
 
-	intent := ecs.TankControlIntent{}
+	intent := ecscomponents.TankControlIntent{}
 
 	if stopDistance <= 0 || distanceSquared > stopDistance*stopDistance {
 		intent.Throttle = 1

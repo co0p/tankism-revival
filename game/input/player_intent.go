@@ -1,13 +1,13 @@
 package input
 
 import (
-	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 // ReadPlayerTankIntent captures keyboard state and produces a tank control snapshot.
-func ReadPlayerTankIntent() ecs.TankControlIntent {
-	var intent ecs.TankControlIntent
+func ReadPlayerTankIntent() ecscomponents.TankControlIntent {
+	var intent ecscomponents.TankControlIntent
 
 	if ebiten.IsKeyPressed(ebiten.KeyW) || ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
 		intent.Throttle += 1

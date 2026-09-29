@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 )
 
 func TestUpdateChaserIntentTargetAhead(t *testing.T) {
@@ -12,9 +13,9 @@ func TestUpdateChaserIntentTargetAhead(t *testing.T) {
 	chaser := w.CreateEntity()
 	target := w.CreateEntity()
 
-	must(t, w.SetTransform(chaser, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
-	must(t, w.SetTransform(target, ecs.Transform{X: 0, Y: -100, RotationRadians: 0}))
-	must(t, w.SetTankControlIntent(chaser, ecs.TankControlIntent{}))
+	must(t, w.SetTransform(chaser, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTransform(target, ecscomponents.Transform{X: 0, Y: -100, RotationRadians: 0}))
+	must(t, w.SetTankControlIntent(chaser, ecscomponents.TankControlIntent{}))
 
 	if err := UpdateChaserIntent(w, chaser, target, 10); err != nil {
 		t.Fatalf("update chaser intent: %v", err)
@@ -37,8 +38,8 @@ func TestUpdateChaserIntentTurnsTowardRightTarget(t *testing.T) {
 	chaser := w.CreateEntity()
 	target := w.CreateEntity()
 
-	must(t, w.SetTransform(chaser, ecs.Transform{X: 0, Y: 0, RotationRadians: 0}))
-	must(t, w.SetTransform(target, ecs.Transform{X: 100, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTransform(chaser, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTransform(target, ecscomponents.Transform{X: 100, Y: 0, RotationRadians: 0}))
 
 	if err := UpdateChaserIntent(w, chaser, target, 10); err != nil {
 		t.Fatalf("update chaser intent: %v", err)
@@ -63,8 +64,8 @@ func TestUpdateChaserIntentStopsWithinStopDistance(t *testing.T) {
 	chaser := w.CreateEntity()
 	target := w.CreateEntity()
 
-	must(t, w.SetTransform(chaser, ecs.Transform{X: 0, Y: 0, RotationRadians: math.Pi / 3}))
-	must(t, w.SetTransform(target, ecs.Transform{X: 20, Y: 0, RotationRadians: 0}))
+	must(t, w.SetTransform(chaser, ecscomponents.Transform{X: 0, Y: 0, RotationRadians: math.Pi / 3}))
+	must(t, w.SetTransform(target, ecscomponents.Transform{X: 20, Y: 0, RotationRadians: 0}))
 
 	if err := UpdateChaserIntent(w, chaser, target, 40); err != nil {
 		t.Fatalf("update chaser intent: %v", err)

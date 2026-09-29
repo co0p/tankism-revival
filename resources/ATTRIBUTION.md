@@ -28,9 +28,9 @@
   - Original archive path: `PNG/Default size/tileGrass2.png`
   - Notes: random map grass tiling variant B
 
-- `resources/images/kenney_topdown_tanks_redux/obstacle_barrel_red_top.png`
-  - Original archive path: `PNG/Default size/barrelRed_top.png`
-  - Notes: barrel obstacle sprite
+- `resources/images/kenney_topdown_tanks_redux/obstacle_barrel_gray_top.png`
+  - Original archive path: `PNG/Default size/barrelBlack_top.png`
+  - Notes: barrel obstacle sprite (gray variant replacing red)
 
 - `resources/images/kenney_topdown_tanks_redux/obstacle_fence_red.png`
   - Original archive path: `PNG/Default size/fenceRed.png`
@@ -39,6 +39,34 @@
 - `resources/images/kenney_topdown_tanks_redux/obstacle_crate_wood.png`
   - Original archive path: `PNG/Default size/crateWood.png`
   - Notes: crate obstacle sprite
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_tree_green_large.png`
+  - Original archive path: `PNG/Default size/treeGreen_large.png`
+  - Notes: large tree prop
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_tree_green_small.png`
+  - Original archive path: `PNG/Default size/treeGreen_small.png`
+  - Notes: small tree prop
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_tree_brown_large.png`
+  - Original archive path: `PNG/Default size/treeBrown_large.png`
+  - Notes: large tree prop (brown variant)
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_tree_brown_small.png`
+  - Original archive path: `PNG/Default size/treeBrown_small.png`
+  - Notes: small tree prop (brown variant)
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_wire_straight.png`
+  - Original archive path: `PNG/Default size/wireStraight.png`
+  - Notes: straight wire prop
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_wire_crooked.png`
+  - Original archive path: `PNG/Default size/wireCrooked.png`
+  - Notes: crooked wire prop
+
+- `resources/images/kenney_topdown_tanks_redux/obstacle_tank_cross_metal.png`
+  - Original archive path: `PNG/Default size/barricadeMetal.png`
+  - Notes: anti-tank cross style barricade prop
 
 - `resources/images/kenney_topdown_tanks_redux/projectile_red.png`
   - Original archive path: `PNG/Default size/bulletRed1.png`
@@ -57,3 +85,36 @@
   - Notes: larger projectile sprite for enemy shots
 
 Attribution is appreciated by the author but not required by CC0.
+
+## Thimras — Cannon fire (Top Down Shooter collection)
+
+- **Requested collection page:** https://opengameart.org/content/top-down-shooter-0
+- **Asset page:** https://opengameart.org/content/cannon-fire
+- **Downloaded from:** https://opengameart.org/sites/default/files/cannon_fire_0.ogg
+- **Author:** Thimras
+- **License:** Creative Commons CC0 1.0
+- **License URL:** https://creativecommons.org/publicdomain/zero/1.0/
+- **Repository license copy:** `resources/licenses/opengameart_top_down_shooter_cannon_fire_LICENSE_CC0.txt`
+
+### Files currently used
+
+- `resources/audio/opengameart_top_down_shooter/cannon_fire.ogg`
+  - Original download file: `cannon_fire_0.ogg`
+  - Notes: shared firing sound for both player and enemy tank shots
+
+## Nayckron (with qubodup) — Engine-loop heavy vehicle/tank
+
+- **Requested collection page:** https://opengameart.org/content/top-down-shooter-0
+- **Asset page:** https://opengameart.org/content/engine-loop-heavy-vehicletank
+- **Downloaded from:** https://opengameart.org/sites/default/files/engine_heavy_loop_1.ogg
+- **Author:** Nayckron
+- **Collaborator:** qubodup
+- **License selected for repository use:** Creative Commons Attribution 3.0 (CC-BY 3.0)
+- **License URL:** https://creativecommons.org/licenses/by/3.0/
+- **Repository license copy:** `resources/licenses/opengameart_engine_loop_heavy_vehicle_tank_LICENSE_CC-BY-3.0.txt`
+
+### Files currently used
+
+- `resources/audio/opengameart_top_down_shooter/engine_heavy_loop.ogg`
+  - Original download file: `engine_heavy_loop_1.ogg`
+  - Notes: looped tank engine layer, mixed quietly at idle and louder while moving
