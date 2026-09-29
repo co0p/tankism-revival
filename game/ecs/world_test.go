@@ -52,6 +52,9 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 	if err := w.SetTankVelocity(e, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 45}); err != nil {
 		t.Fatalf("set tank velocity: %v", err)
 	}
+	if err := w.SetEnemyAI(e, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorAggressive, FavoredBehavior: ecscomponents.EnemyBehaviorCautious, RNGState: 42}); err != nil {
+		t.Fatalf("set enemy ai: %v", err)
+	}
 	if err := w.SetHealth(e, ecscomponents.Health{Current: 80, Max: 100}); err != nil {
 		t.Fatalf("set health: %v", err)
 	}
@@ -126,6 +129,10 @@ func TestDestroyEntityRemovesAllComponents(t *testing.T) {
 
 	if _, ok := w.TankVelocity(e); ok {
 		t.Fatalf("tank velocity should be removed on destroy")
+	}
+
+	if _, ok := w.EnemyAI(e); ok {
+		t.Fatalf("enemy ai should be removed on destroy")
 	}
 
 	if _, ok := w.Health(e); ok {
@@ -223,6 +230,11 @@ func TestSetComponentOnDeadEntityFails(t *testing.T) {
 		t.Fatalf("set tank velocity on dead entity should return ErrEntityNotAlive, got: %v", err)
 	}
 
+	err = w.SetEnemyAI(999, ecscomponents.EnemyAI{})
+	if !errors.Is(err, ErrEntityNotAlive) {
+		t.Fatalf("set enemy ai on dead entity should return ErrEntityNotAlive, got: %v", err)
+	}
+
 	err = w.SetHealth(999, ecscomponents.Health{})
 	if !errors.Is(err, ErrEntityNotAlive) {
 		t.Fatalf("set health on dead entity should return ErrEntityNotAlive, got: %v", err)
@@ -299,6 +311,9 @@ func TestAttachComponentAttachesTypedComponents(t *testing.T) {
 	if err := AttachComponent(w, e, ecscomponents.Health{Current: 35, Max: 50}); err != nil {
 		t.Fatalf("attach health: %v", err)
 	}
+	if err := AttachComponent(w, e, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorAggressive}); err != nil {
+		t.Fatalf("attach enemy ai: %v", err)
+	}
 	if err := AttachComponent(w, e, ecscomponents.SolidObstacle{}); err != nil {
 		t.Fatalf("attach solid obstacle: %v", err)
 	}
@@ -317,6 +332,14 @@ func TestAttachComponentAttachesTypedComponents(t *testing.T) {
 	}
 	if health != (ecscomponents.Health{Current: 35, Max: 50}) {
 		t.Fatalf("unexpected health: %+v", health)
+	}
+
+	enemyAI, ok := w.EnemyAI(e)
+	if !ok {
+		t.Fatalf("expected attached enemy ai")
+	}
+	if enemyAI.Behavior != ecscomponents.EnemyBehaviorAggressive {
+		t.Fatalf("unexpected enemy ai behavior: %v", enemyAI.Behavior)
 	}
 
 	if !w.IsSolidObstacle(e) {
@@ -675,5 +698,46 @@ func TestArmedTanksAndProjectileStatesQueries(t *testing.T) {
 	}
 	if projectiles[0].Entity != projectileEntity {
 		t.Fatalf("unexpected projectile entity: got %d want %d", projectiles[0].Entity, projectileEntity)
+	}
+}
+
+func TestEnemyAITanksQueryReturnsSortedEnemiesWithTransformAndDrive(t *testing.T) {
+	w := NewWorld()
+
+	enemyA := w.CreateEntity()
+	enemyB := w.CreateEntity()
+	nonTank := w.CreateEntity()
+
+	if err := w.SetTransform(enemyB, ecscomponents.Transform{X: 20, Y: 30}); err != nil {
+		t.Fatalf("set enemyB transform: %v", err)
+	}
+	if err := w.SetTankDrive(enemyB, ecscomponents.TankDrive{MoveSpeed: 90, TurnSpeedRadiansPS: 1.5}); err != nil {
+		t.Fatalf("set enemyB drive: %v", err)
+	}
+	if err := w.SetEnemyAI(enemyB, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorCautious}); err != nil {
+		t.Fatalf("set enemyB ai: %v", err)
+	}
+
+	if err := w.SetTransform(enemyA, ecscomponents.Transform{X: 5, Y: 10}); err != nil {
+		t.Fatalf("set enemyA transform: %v", err)
+	}
+	if err := w.SetTankDrive(enemyA, ecscomponents.TankDrive{MoveSpeed: 100, TurnSpeedRadiansPS: 2}); err != nil {
+		t.Fatalf("set enemyA drive: %v", err)
+	}
+	if err := w.SetEnemyAI(enemyA, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorAggressive}); err != nil {
+		t.Fatalf("set enemyA ai: %v", err)
+	}
+
+	if err := w.SetEnemyAI(nonTank, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorFleeing}); err != nil {
+		t.Fatalf("set nonTank ai: %v", err)
+	}
+
+	tanks := w.EnemyAITanks()
+	if len(tanks) != 2 {
+		t.Fatalf("expected 2 enemy ai tanks, got %d", len(tanks))
+	}
+
+	if tanks[0].Entity != enemyA || tanks[1].Entity != enemyB {
+		t.Fatalf("unexpected enemy ai tank order: got [%d, %d], want [%d, %d]", tanks[0].Entity, tanks[1].Entity, enemyA, enemyB)
 	}
 }

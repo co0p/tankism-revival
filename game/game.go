@@ -16,6 +16,7 @@ import (
 	"github.com/co0p/tankism-revival/lib/sprites"
 	gameassets "github.com/co0p/tankism-revival/resources"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 const (
@@ -34,9 +35,9 @@ const (
 	defaultEnemyBrakeDeceleration   = 240
 	defaultEnemyStopDistance        = 145.0
 
-	defaultPlayerWeaponCooldown            = 0.28
+	defaultPlayerWeaponCooldown            = 0.40
 	defaultPlayerProjectileSpeed           = 360.0
-	defaultPlayerProjectileLife            = 1.25
+	defaultPlayerProjectileLife            = 1.70
 	defaultPlayerProjectileDamage          = 12.0
 	defaultPlayerMuzzleOffset              = 22.0
 	defaultPlayerProjectileRadius          = 4.0
@@ -46,10 +47,15 @@ const (
 	defaultPlayerMuzzleFlashOffset         = 16.0
 	defaultPlayerMuzzleFlashLightRadius    = 64.0
 	defaultPlayerMuzzleFlashLightIntensity = 0.52
+	defaultPlayerAccuracySpreadBase        = 0.045
+	defaultPlayerAccuracyMinSpread         = 0.006
+	defaultPlayerAccuracyMovingSpread      = 0.12
+	defaultPlayerAccuracyStoppedMultiplier = 0.45
+	defaultPlayerAccuracyRelaxedMultiplier = 0.85
 
-	defaultEnemyWeaponCooldown            = 0.74
+	defaultEnemyWeaponCooldown            = 0.92
 	defaultEnemyProjectileSpeed           = 300.0
-	defaultEnemyProjectileLife            = 1.15
+	defaultEnemyProjectileLife            = 1.45
 	defaultEnemyProjectileDamage          = 6.0
 	defaultEnemyMuzzleOffset              = 22.0
 	defaultEnemyProjectileRadius          = 4.0
@@ -59,6 +65,11 @@ const (
 	defaultEnemyMuzzleFlashOffset         = 16.0
 	defaultEnemyMuzzleFlashLightRadius    = 56.0
 	defaultEnemyMuzzleFlashLightIntensity = 0.44
+	defaultEnemyAccuracySpreadBase        = 0.085
+	defaultEnemyAccuracyMinSpread         = 0.010
+	defaultEnemyAccuracyMovingSpread      = 0.18
+	defaultEnemyAccuracyStoppedMultiplier = 0.50
+	defaultEnemyAccuracyRelaxedMultiplier = 0.70
 	defaultAmbientDarkness                = 0.70
 	defaultPlayerLightRadius              = 170.0
 	defaultPlayerLightIntensity           = 0.20
@@ -90,6 +101,19 @@ const (
 	defaultEnemyEngineMovingVolume   = 0.18
 	defaultEnemyEngineAttackPerSec   = 1.4
 	defaultEnemyEngineReleasePerSec  = 0.8
+
+	defaultExplosionLifetime       = 0.22
+	defaultExplosionBurstLifetime  = 0.10
+	defaultExplosionSmokeLifetime  = 0.48
+	defaultExplosionPlumeLifetime  = 0.62
+	defaultExplosionLightRadius    = 86.0
+	defaultExplosionLightIntensity = 0.60
+	defaultBurstLightRadius        = 118.0
+	defaultBurstLightIntensity     = 0.92
+
+	defaultGameOverShakeDurationSeconds = 0.32
+	defaultGameOverShakeAmplitude       = 9.0
+	defaultGameOverShakeFrequency       = 34.0
 )
 
 var (
@@ -101,11 +125,16 @@ type Game struct {
 	mapEntity             ecs.Entity
 	camera                Camera
 	playerEntity          ecs.Entity
-	enemyEntity           ecs.Entity
+	enemyEntities         []ecs.Entity
 	playerBackLightEntity ecs.Entity
 	renderer              *gamerender.WorldRenderer
 	soundMixer            *libaudio.EffectMixer
 	activeEngineLoops     map[string]struct{}
+	gameOver              bool
+	gameOverShakeSeconds  float64
+	gameOverShakePhase    float64
+	gameOverShakeX        float64
+	gameOverShakeY        float64
 }
 
 func NewGame() (*Game, error) {
@@ -117,10 +146,17 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		mapPath = DefaultMapPath
 	}
 
-	spriteAssets := make([]sprites.Asset, 0, len(gamepalette.Sprites))
+	spriteAssets := make([]sprites.Asset, 0, len(gamepalette.Sprites)+5)
 	for _, spriteDef := range gamepalette.Sprites {
 		spriteAssets = append(spriteAssets, sprites.Asset{ID: spriteDef.ID, Path: spriteDef.Path})
 	}
+	spriteAssets = append(spriteAssets,
+		sprites.Asset{ID: SpriteExplosionCore, Path: gameassets.Explosion3Path},
+		sprites.Asset{ID: SpriteExplosionBurst, Path: gameassets.Explosion1Path},
+		sprites.Asset{ID: SpriteExplosionSmoke, Path: gameassets.ExplosionSmoke3Path},
+		sprites.Asset{ID: SpriteExplosionPlume, Path: gameassets.ExplosionSmoke1Path},
+		sprites.Asset{ID: SpriteEnemyWreckHull, Path: gameassets.TankBodyDarkPath},
+	)
 
 	spriteImages, err := sprites.Load(gameassets.FS, spriteAssets)
 	if err != nil {
@@ -247,6 +283,11 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		ProjectileLifetime:        defaultPlayerProjectileLife,
 		ProjectileDamage:          defaultPlayerProjectileDamage,
 		MuzzleOffset:              defaultPlayerMuzzleOffset,
+		AccuracySpreadRadians:     defaultPlayerAccuracySpreadBase,
+		AccuracyMinSpreadRadians:  defaultPlayerAccuracyMinSpread,
+		AccuracyMovingSpread:      defaultPlayerAccuracyMovingSpread,
+		AccuracyStoppedMultiplier: defaultPlayerAccuracyStoppedMultiplier,
+		AccuracyRelaxedMultiplier: defaultPlayerAccuracyRelaxedMultiplier,
 		ProjectileSpriteID:        SpriteProjectileRed,
 		ProjectileRadius:          defaultPlayerProjectileRadius,
 		ProjectileLightRadius:     defaultPlayerProjectileLightRadius,
@@ -300,93 +341,119 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		return nil, fmt.Errorf("set ambient light: %w", err)
 	}
 
-	enemy := world.CreateEntity()
-	enemySpawnX, enemySpawnY := worldMap.ClampPosition(seedResult.EnemySpawnX, seedResult.EnemySpawnY)
-	if err := world.SetTransform(enemy, ecscomponents.Transform{
-		X:               enemySpawnX,
-		Y:               enemySpawnY,
-		RotationRadians: math.Pi,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy transform: %w", err)
+	spawnEnemy := func(spawnX, spawnY float64) (ecs.Entity, error) {
+		enemy := world.CreateEntity()
+		if err := world.SetTransform(enemy, ecscomponents.Transform{
+			X:               spawnX,
+			Y:               spawnY,
+			RotationRadians: math.Pi,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy transform: %w", err)
+		}
+		if err := world.SetSpriteRenderer(enemy, ecscomponents.SpriteRenderer{
+			SpriteID:              SpriteTankBlueSmall,
+			ZIndex:                ZIndexActors,
+			RotationOffsetRadians: math.Pi,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy sprite renderer: %w", err)
+		}
+		if err := world.SetTankDrive(enemy, ecscomponents.TankDrive{
+			MoveSpeed:          defaultEnemyMoveSpeed,
+			TurnSpeedRadiansPS: defaultEnemyTurnSpeedRadiansPS,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy tank drive: %w", err)
+		}
+		if err := world.SetTankAcceleration(enemy, ecscomponents.TankAcceleration{
+			ForwardUnitsPerSecondSquared: defaultEnemyAcceleration,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy tank acceleration: %w", err)
+		}
+		if err := world.SetTankDeceleration(enemy, ecscomponents.TankDeceleration{
+			CoastUnitsPerSecondSquared: defaultEnemyCoastDeceleration,
+			BrakeUnitsPerSecondSquared: defaultEnemyBrakeDeceleration,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy tank deceleration: %w", err)
+		}
+		if err := world.SetTankVelocity(enemy, ecscomponents.TankVelocity{}); err != nil {
+			return 0, fmt.Errorf("set enemy tank velocity: %w", err)
+		}
+		if err := world.SetTankControlIntent(enemy, ecscomponents.TankControlIntent{}); err != nil {
+			return 0, fmt.Errorf("set enemy tank control intent: %w", err)
+		}
+		if err := world.SetEnemyAI(enemy, sim.NewEnemyAI(enemy)); err != nil {
+			return 0, fmt.Errorf("set enemy ai: %w", err)
+		}
+		if err := world.SetCircleCollider(enemy, ecscomponents.CircleCollider{Radius: enemyCollisionRadius}); err != nil {
+			return 0, fmt.Errorf("set enemy collider: %w", err)
+		}
+		if err := world.SetHealth(enemy, ecscomponents.Health{Current: enemyMaxHealth, Max: enemyMaxHealth}); err != nil {
+			return 0, fmt.Errorf("set enemy health: %w", err)
+		}
+		if err := world.SetPointLight(enemy, ecscomponents.PointLight{
+			Radius:    120,
+			Intensity: 0.10,
+			Color:     ecscomponents.LightColor{R: 0.7, G: 0.82, B: 1.0},
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy point light: %w", err)
+		}
+		if err := world.SetWeapon(enemy, ecscomponents.Weapon{
+			CooldownSeconds:           defaultEnemyWeaponCooldown,
+			ProjectileSpeed:           defaultEnemyProjectileSpeed,
+			ProjectileLifetime:        defaultEnemyProjectileLife,
+			ProjectileDamage:          defaultEnemyProjectileDamage,
+			MuzzleOffset:              defaultEnemyMuzzleOffset,
+			AccuracySpreadRadians:     defaultEnemyAccuracySpreadBase,
+			AccuracyMinSpreadRadians:  defaultEnemyAccuracyMinSpread,
+			AccuracyMovingSpread:      defaultEnemyAccuracyMovingSpread,
+			AccuracyStoppedMultiplier: defaultEnemyAccuracyStoppedMultiplier,
+			AccuracyRelaxedMultiplier: defaultEnemyAccuracyRelaxedMultiplier,
+			ProjectileSpriteID:        SpriteProjectileBlue,
+			ProjectileRadius:          defaultEnemyProjectileRadius,
+			ProjectileLightRadius:     defaultEnemyProjectileLightRadius,
+			ProjectileLightIntensity:  defaultEnemyProjectileLightIntensity,
+			ProjectileLightColor:      ecscomponents.LightColor{R: 0.74, G: 0.86, B: 1.00},
+			MuzzleFlashSpriteID:       SpriteShotOrange,
+			MuzzleFlashLifetime:       defaultEnemyMuzzleFlashLifetime,
+			MuzzleFlashOffset:         defaultEnemyMuzzleFlashOffset,
+			MuzzleFlashLightRadius:    defaultEnemyMuzzleFlashLightRadius,
+			MuzzleFlashLightIntensity: defaultEnemyMuzzleFlashLightIntensity,
+			MuzzleFlashLightColor:     ecscomponents.LightColor{R: 0.96, G: 0.80, B: 0.56},
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy weapon: %w", err)
+		}
+		if err := world.SetAudioPlayer(enemy, ecscomponents.AudioPlayer{ShootSoundID: SoundCannonFire, Volume: 0.45}); err != nil {
+			return 0, fmt.Errorf("set enemy audio player: %w", err)
+		}
+		if err := world.SetSoundVolumeByDistance(enemy, ecscomponents.SoundVolumeByDistance{MaxDistance: 900, MinFactor: 0.10}); err != nil {
+			return 0, fmt.Errorf("set enemy sound volume by distance: %w", err)
+		}
+		if err := world.SetEngineAudio(enemy, ecscomponents.EngineAudio{
+			SoundID:       SoundEngineHeavyLoop,
+			IdleVolume:    defaultEnemyEngineIdleVolume,
+			MovingVolume:  defaultEnemyEngineMovingVolume,
+			AttackPerSec:  defaultEnemyEngineAttackPerSec,
+			ReleasePerSec: defaultEnemyEngineReleasePerSec,
+			CurrentVolume: defaultEnemyEngineIdleVolume,
+		}); err != nil {
+			return 0, fmt.Errorf("set enemy engine audio: %w", err)
+		}
+
+		return enemy, nil
 	}
-	if err := world.SetSpriteRenderer(enemy, ecscomponents.SpriteRenderer{
-		SpriteID:              SpriteTankBlueSmall,
-		ZIndex:                ZIndexActors,
-		RotationOffsetRadians: math.Pi,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy sprite renderer: %w", err)
+
+	enemySpawns := seedResult.EnemySpawns
+	if len(enemySpawns) == 0 {
+		enemySpawns = []worldseed.SpawnPoint{{X: seedResult.EnemySpawnX, Y: seedResult.EnemySpawnY}}
 	}
-	if err := world.SetTankDrive(enemy, ecscomponents.TankDrive{
-		MoveSpeed:          defaultEnemyMoveSpeed,
-		TurnSpeedRadiansPS: defaultEnemyTurnSpeedRadiansPS,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy tank drive: %w", err)
-	}
-	if err := world.SetTankAcceleration(enemy, ecscomponents.TankAcceleration{
-		ForwardUnitsPerSecondSquared: defaultEnemyAcceleration,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy tank acceleration: %w", err)
-	}
-	if err := world.SetTankDeceleration(enemy, ecscomponents.TankDeceleration{
-		CoastUnitsPerSecondSquared: defaultEnemyCoastDeceleration,
-		BrakeUnitsPerSecondSquared: defaultEnemyBrakeDeceleration,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy tank deceleration: %w", err)
-	}
-	if err := world.SetTankVelocity(enemy, ecscomponents.TankVelocity{}); err != nil {
-		return nil, fmt.Errorf("set enemy tank velocity: %w", err)
-	}
-	if err := world.SetTankControlIntent(enemy, ecscomponents.TankControlIntent{}); err != nil {
-		return nil, fmt.Errorf("set enemy tank control intent: %w", err)
-	}
-	if err := world.SetCircleCollider(enemy, ecscomponents.CircleCollider{Radius: enemyCollisionRadius}); err != nil {
-		return nil, fmt.Errorf("set enemy collider: %w", err)
-	}
-	if err := world.SetHealth(enemy, ecscomponents.Health{Current: enemyMaxHealth, Max: enemyMaxHealth}); err != nil {
-		return nil, fmt.Errorf("set enemy health: %w", err)
-	}
-	if err := world.SetPointLight(enemy, ecscomponents.PointLight{
-		Radius:    120,
-		Intensity: 0.10,
-		Color:     ecscomponents.LightColor{R: 0.7, G: 0.82, B: 1.0},
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy point light: %w", err)
-	}
-	if err := world.SetWeapon(enemy, ecscomponents.Weapon{
-		CooldownSeconds:           defaultEnemyWeaponCooldown,
-		ProjectileSpeed:           defaultEnemyProjectileSpeed,
-		ProjectileLifetime:        defaultEnemyProjectileLife,
-		ProjectileDamage:          defaultEnemyProjectileDamage,
-		MuzzleOffset:              defaultEnemyMuzzleOffset,
-		ProjectileSpriteID:        SpriteProjectileBlue,
-		ProjectileRadius:          defaultEnemyProjectileRadius,
-		ProjectileLightRadius:     defaultEnemyProjectileLightRadius,
-		ProjectileLightIntensity:  defaultEnemyProjectileLightIntensity,
-		ProjectileLightColor:      ecscomponents.LightColor{R: 0.74, G: 0.86, B: 1.00},
-		MuzzleFlashSpriteID:       SpriteShotOrange,
-		MuzzleFlashLifetime:       defaultEnemyMuzzleFlashLifetime,
-		MuzzleFlashOffset:         defaultEnemyMuzzleFlashOffset,
-		MuzzleFlashLightRadius:    defaultEnemyMuzzleFlashLightRadius,
-		MuzzleFlashLightIntensity: defaultEnemyMuzzleFlashLightIntensity,
-		MuzzleFlashLightColor:     ecscomponents.LightColor{R: 0.96, G: 0.80, B: 0.56},
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy weapon: %w", err)
-	}
-	if err := world.SetAudioPlayer(enemy, ecscomponents.AudioPlayer{ShootSoundID: SoundCannonFire, Volume: 0.45}); err != nil {
-		return nil, fmt.Errorf("set enemy audio player: %w", err)
-	}
-	if err := world.SetSoundVolumeByDistance(enemy, ecscomponents.SoundVolumeByDistance{MaxDistance: 900, MinFactor: 0.10}); err != nil {
-		return nil, fmt.Errorf("set enemy sound volume by distance: %w", err)
-	}
-	if err := world.SetEngineAudio(enemy, ecscomponents.EngineAudio{
-		SoundID:       SoundEngineHeavyLoop,
-		IdleVolume:    defaultEnemyEngineIdleVolume,
-		MovingVolume:  defaultEnemyEngineMovingVolume,
-		AttackPerSec:  defaultEnemyEngineAttackPerSec,
-		ReleasePerSec: defaultEnemyEngineReleasePerSec,
-		CurrentVolume: defaultEnemyEngineIdleVolume,
-	}); err != nil {
-		return nil, fmt.Errorf("set enemy engine audio: %w", err)
+
+	enemyEntities := make([]ecs.Entity, 0, len(enemySpawns))
+	for _, spawn := range enemySpawns {
+		enemySpawnX, enemySpawnY := worldMap.ClampPosition(spawn.X, spawn.Y)
+		enemy, err := spawnEnemy(enemySpawnX, enemySpawnY)
+		if err != nil {
+			return nil, err
+		}
+		enemyEntities = append(enemyEntities, enemy)
 	}
 
 	camera := NewCamera(float64(LogicalWidth), float64(LogicalHeight))
@@ -397,7 +464,7 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		mapEntity:             mapEntity,
 		camera:                camera,
 		playerEntity:          player,
-		enemyEntity:           enemy,
+		enemyEntities:         enemyEntities,
 		playerBackLightEntity: playerBackLight,
 		renderer:              renderer,
 		soundMixer:            soundMixer,
@@ -410,24 +477,52 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) updateGame(deltaSeconds float64) error {
+	if g.gameOver {
+		g.updateGameOverShake(deltaSeconds)
+		return nil
+	}
+
 	intent := gameinput.ReadPlayerTankIntent()
 	if err := g.world.SetTankControlIntent(g.playerEntity, intent); err != nil {
 		return fmt.Errorf("set player intent: %w", err)
 	}
 
 	if err := sim.RunDefaultPipeline(g.world, deltaSeconds, sim.PipelineConfig{
-		PlayerEntity:            g.playerEntity,
-		EnemyEntity:             g.enemyEntity,
-		MapEntity:               g.mapEntity,
-		AudioListenerEntity:     g.playerEntity,
-		EnemyStopDistance:       defaultEnemyStopDistance,
-		ProjectileZIndex:        ZIndexProjectiles,
-		MuzzleFlashZIndex:       ZIndexEffects,
+		PlayerEntity:        g.playerEntity,
+		MapEntity:           g.mapEntity,
+		AudioListenerEntity: g.playerEntity,
+		EnemyStopDistance:   defaultEnemyStopDistance,
+		ProjectileZIndex:    ZIndexProjectiles,
+		MuzzleFlashZIndex:   ZIndexEffects,
+		TankDestruction: sim.TankDestructionConfig{
+			ExplosionSpriteID:        SpriteExplosionCore,
+			ExplosionBurstSpriteID:   SpriteExplosionBurst,
+			ExplosionSmokeSpriteID:   SpriteExplosionSmoke,
+			ExplosionPlumeSpriteID:   SpriteExplosionPlume,
+			EnemyWreckSpriteID:       SpriteEnemyWreckHull,
+			ExplosionZIndex:          ZIndexEffects,
+			EnemyWreckZIndex:         ZIndexActors,
+			ExplosionLifetime:        defaultExplosionLifetime,
+			ExplosionBurstLifetime:   defaultExplosionBurstLifetime,
+			ExplosionSmokeLifetime:   defaultExplosionSmokeLifetime,
+			ExplosionPlumeLifetime:   defaultExplosionPlumeLifetime,
+			ExplosionLightRadius:     defaultExplosionLightRadius,
+			ExplosionLightIntensity:  defaultExplosionLightIntensity,
+			BurstLightRadius:         defaultBurstLightRadius,
+			BurstLightIntensity:      defaultBurstLightIntensity,
+			ExplosionLightColor:      ecscomponents.LightColor{R: 1.0, G: 0.62, B: 0.36},
+			EnemyWreckColliderRadius: enemyCollisionRadius,
+		},
 		Camera:                  &g.camera,
 		PlayerBackLightEntity:   g.playerBackLightEntity,
 		PlayerBackLightDistance: defaultPlayerBackLightDistance,
 	}); err != nil {
 		return fmt.Errorf("run simulation pipeline: %w", err)
+	}
+
+	if g.playerDestroyed() {
+		g.setGameOver()
+		return nil
 	}
 
 	if err := g.syncEngineLoops(); err != nil {
@@ -506,7 +601,74 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) updateDraw(screen *ebiten.Image, interpolationAlpha float64) {
 	_ = interpolationAlpha
-	g.renderer.Draw(screen, g.world, g.camera)
+	drawCamera := g.camera
+	drawCamera.X += g.gameOverShakeX
+	drawCamera.Y += g.gameOverShakeY
+	g.renderer.Draw(screen, g.world, &drawCamera)
+
+	if g.gameOver {
+		ebitenutil.DebugPrintAt(screen, "GAME OVER - player tank destroyed", LogicalWidth/2-130, LogicalHeight/2)
+	}
+}
+
+func (g *Game) playerDestroyed() bool {
+	if !g.world.IsAlive(g.playerEntity) {
+		return true
+	}
+
+	health, ok := g.world.Health(g.playerEntity)
+	if !ok {
+		return true
+	}
+
+	return health.Current <= 0 || health.Max <= 0
+}
+
+func (g *Game) setGameOver() {
+	if g.gameOver {
+		return
+	}
+
+	g.gameOver = true
+	g.gameOverShakeSeconds = defaultGameOverShakeDurationSeconds
+	g.gameOverShakePhase = 0
+	g.gameOverShakeX = 0
+	g.gameOverShakeY = 0
+
+	for _, queued := range g.world.SoundIntents() {
+		g.world.RemovePlaySoundIntent(queued.Entity)
+	}
+
+	if g.soundMixer == nil {
+		return
+	}
+
+	for loopID := range g.activeEngineLoops {
+		g.soundMixer.RemoveLoop(loopID)
+	}
+	g.activeEngineLoops = make(map[string]struct{})
+	g.soundMixer.Update()
+}
+
+func (g *Game) updateGameOverShake(deltaSeconds float64) {
+	if g.gameOverShakeSeconds <= 0 {
+		g.gameOverShakeX = 0
+		g.gameOverShakeY = 0
+		return
+	}
+
+	g.gameOverShakeSeconds -= deltaSeconds
+	if g.gameOverShakeSeconds <= 0 {
+		g.gameOverShakeX = 0
+		g.gameOverShakeY = 0
+		g.gameOverShakeSeconds = 0
+		return
+	}
+
+	envelope := g.gameOverShakeSeconds / defaultGameOverShakeDurationSeconds
+	g.gameOverShakePhase += deltaSeconds * defaultGameOverShakeFrequency
+	g.gameOverShakeX = math.Sin(g.gameOverShakePhase*2.1) * defaultGameOverShakeAmplitude * envelope
+	g.gameOverShakeY = math.Cos(g.gameOverShakePhase*1.7) * (defaultGameOverShakeAmplitude * 0.8) * envelope
 }
 
 func (g *Game) Layout(_, _ int) (screenWidth, screenHeight int) {

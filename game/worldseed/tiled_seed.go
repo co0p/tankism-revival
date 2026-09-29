@@ -30,8 +30,16 @@ type TiledSeedResult struct {
 
 	PlayerSpawnX float64
 	PlayerSpawnY float64
-	EnemySpawnX  float64
-	EnemySpawnY  float64
+	EnemySpawns  []SpawnPoint
+
+	// Deprecated compatibility fields. Prefer EnemySpawns.
+	EnemySpawnX float64
+	EnemySpawnY float64
+}
+
+type SpawnPoint struct {
+	X float64
+	Y float64
 }
 
 func SeedFromTiledMap(world *ecs.World, cfg TiledSeedConfig) (TiledSeedResult, error) {
@@ -70,18 +78,31 @@ func SeedFromTiledMap(world *ecs.World, cfg TiledSeedConfig) (TiledSeedResult, e
 		playerSpawnY = mathutil.Clamp(spawn.Y, 0, mapHeight)
 	}
 
-	enemySpawnX := mathutil.Clamp(playerSpawnX+cfg.DefaultEnemyOffsetX, 0, mapWidth)
-	enemySpawnY := mathutil.Clamp(playerSpawnY+cfg.DefaultEnemyOffsetY, 0, mapHeight)
-	if spawn, ok := doc.Spawn(tiled.EnemySpawnObjectName); ok {
-		enemySpawnX = mathutil.Clamp(spawn.X, 0, mapWidth)
-		enemySpawnY = mathutil.Clamp(spawn.Y, 0, mapHeight)
+	enemySpawnObjects := doc.Spawns(tiled.EnemySpawnObjectName)
+	enemySpawns := make([]SpawnPoint, 0, len(enemySpawnObjects))
+	if len(enemySpawnObjects) == 0 {
+		enemySpawns = append(enemySpawns, SpawnPoint{
+			X: mathutil.Clamp(playerSpawnX+cfg.DefaultEnemyOffsetX, 0, mapWidth),
+			Y: mathutil.Clamp(playerSpawnY+cfg.DefaultEnemyOffsetY, 0, mapHeight),
+		})
+	} else {
+		for _, spawn := range enemySpawnObjects {
+			enemySpawns = append(enemySpawns, SpawnPoint{
+				X: mathutil.Clamp(spawn.X, 0, mapWidth),
+				Y: mathutil.Clamp(spawn.Y, 0, mapHeight),
+			})
+		}
 	}
+
+	enemySpawnX := enemySpawns[0].X
+	enemySpawnY := enemySpawns[0].Y
 
 	return TiledSeedResult{
 		MapWidth:     mapWidth,
 		MapHeight:    mapHeight,
 		PlayerSpawnX: playerSpawnX,
 		PlayerSpawnY: playerSpawnY,
+		EnemySpawns:  enemySpawns,
 		EnemySpawnX:  enemySpawnX,
 		EnemySpawnY:  enemySpawnY,
 	}, nil

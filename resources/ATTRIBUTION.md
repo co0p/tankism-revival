@@ -84,6 +84,26 @@
   - Original archive path: `PNG/Default size/shotOrange.png`
   - Notes: larger projectile sprite for enemy shots
 
+- `resources/images/kenney_topdown_tanks_redux/explosion_3.png`
+  - Original archive path: `PNG/Default size/explosion3.png`
+  - Notes: core explosion burst for tank destruction effect
+
+- `resources/images/kenney_topdown_tanks_redux/explosion_1.png`
+  - Original archive path: `PNG/Default size/explosion1.png`
+  - Notes: short bright burst layer for stronger tank destruction impact
+
+- `resources/images/kenney_topdown_tanks_redux/explosion_smoke_3.png`
+  - Original archive path: `PNG/Default size/explosionSmoke3.png`
+  - Notes: lingering smoke for tank destruction effect
+
+- `resources/images/kenney_topdown_tanks_redux/explosion_smoke_1.png`
+  - Original archive path: `PNG/Default size/explosionSmoke1.png`
+  - Notes: additional plume layer to make explosion aftermath denser
+
+- `resources/images/kenney_topdown_tanks_redux/tank_body_dark.png`
+  - Original archive path: `PNG/Default size/tankBody_dark.png`
+  - Notes: gray/black tank hull used as destroyed enemy wreck
+
 Attribution is appreciated by the author but not required by CC0.
 
 ## Thimras — Cannon fire (Top Down Shooter collection)

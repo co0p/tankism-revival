@@ -40,13 +40,41 @@ type TankVelocity struct {
 	ForwardUnitsPerSecond float64
 }
 
+type EnemyBehavior uint8
+
+const (
+	EnemyBehaviorAggressive EnemyBehavior = iota + 1
+	EnemyBehaviorCautious
+	EnemyBehaviorFleeing
+)
+
+type GridWaypoint struct {
+	Col int
+	Row int
+}
+
+type EnemyAI struct {
+	Behavior                EnemyBehavior
+	FavoredBehavior         EnemyBehavior
+	DecisionCooldownSeconds float64
+	RNGState                uint64
+	Path                    []GridWaypoint
+	PathIndex               int
+}
+
 type Weapon struct {
 	CooldownSeconds           float64
 	CooldownRemaining         float64
+	ShotsFired                uint64
 	ProjectileSpeed           float64
 	ProjectileLifetime        float64
 	ProjectileDamage          float64
 	MuzzleOffset              float64
+	AccuracySpreadRadians     float64
+	AccuracyMinSpreadRadians  float64
+	AccuracyMovingSpread      float64
+	AccuracyStoppedMultiplier float64
+	AccuracyRelaxedMultiplier float64
 	ProjectileSpriteID        string
 	ProjectileRadius          float64
 	ProjectileLightRadius     float64

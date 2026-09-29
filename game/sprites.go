@@ -27,4 +27,10 @@ const (
 
 	SpriteShotRed    = gamepalette.SpriteShotRed
 	SpriteShotOrange = gamepalette.SpriteShotOrange
+
+	SpriteExplosionCore  = "effect_explosion_core"
+	SpriteExplosionBurst = "effect_explosion_burst"
+	SpriteExplosionSmoke = "effect_explosion_smoke"
+	SpriteExplosionPlume = "effect_explosion_plume"
+	SpriteEnemyWreckHull = "effect_enemy_wreck_hull"
 )

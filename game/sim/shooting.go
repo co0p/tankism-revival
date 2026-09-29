@@ -6,6 +6,7 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, projectileZIndex, muzzleFlashZIndex int) error {
@@ -21,14 +22,20 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 
 		shouldFire := tank.Intent.Fire && weapon.CooldownRemaining <= 0
 		if shouldFire && canSpawnProjectile(weapon) {
-			forwardX, forwardY := forwardVector(tank.Transform.RotationRadians)
+			fireRotation := tank.Transform.RotationRadians
+			spread := effectiveProjectileSpread(world, tank.Entity, weapon)
+			if spread > 0 {
+				fireRotation += deterministicSpreadOffset(tank.Entity, weapon.ShotsFired, spread)
+			}
+
+			forwardX, forwardY := forwardVector(fireRotation)
 
 			spawnX := tank.Transform.X + forwardX*weapon.MuzzleOffset
 			spawnY := tank.Transform.Y + forwardY*weapon.MuzzleOffset
 
 			projectile := world.CreateEntity()
 
-			if err := world.SetTransform(projectile, ecscomponents.Transform{X: spawnX, Y: spawnY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
+			if err := world.SetTransform(projectile, ecscomponents.Transform{X: spawnX, Y: spawnY, RotationRadians: fireRotation}); err != nil {
 				return fmt.Errorf("set projectile transform: %w", err)
 			}
 
@@ -69,7 +76,7 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 				muzzleFlashY := spawnY + forwardY*weapon.MuzzleFlashOffset
 
 				muzzleFlash := world.CreateEntity()
-				if err := world.SetTransform(muzzleFlash, ecscomponents.Transform{X: muzzleFlashX, Y: muzzleFlashY, RotationRadians: tank.Transform.RotationRadians}); err != nil {
+				if err := world.SetTransform(muzzleFlash, ecscomponents.Transform{X: muzzleFlashX, Y: muzzleFlashY, RotationRadians: fireRotation}); err != nil {
 					return fmt.Errorf("set muzzle flash transform: %w", err)
 				}
 
@@ -99,6 +106,7 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 			}
 
 			weapon.CooldownRemaining = weapon.CooldownSeconds
+			weapon.ShotsFired++
 
 			if audioPlayer, ok := world.AudioPlayer(tank.Entity); ok && audioPlayer.ShootSoundID != "" {
 				soundVolume := audioPlayer.Volume
@@ -120,6 +128,63 @@ func UpdateWeaponsAndSpawnProjectiles(world *ecs.World, deltaSeconds float64, pr
 	}
 
 	return nil
+}
+
+func effectiveProjectileSpread(world *ecs.World, entity ecs.Entity, weapon ecscomponents.Weapon) float64 {
+	if weapon.AccuracySpreadRadians <= 0 {
+		return 0
+	}
+
+	spread := weapon.AccuracySpreadRadians
+
+	if drive, ok := world.TankDrive(entity); ok && drive.MoveSpeed > 0 {
+		velocity, _ := world.TankVelocity(entity)
+		speedRatio := mathutil.Clamp(math.Abs(velocity.ForwardUnitsPerSecond)/drive.MoveSpeed, 0, 1)
+		spread += speedRatio * weapon.AccuracyMovingSpread
+
+		if speedRatio <= 0.05 && weapon.AccuracyStoppedMultiplier > 0 {
+			spread *= weapon.AccuracyStoppedMultiplier
+		}
+	}
+
+	if isRelaxedMood(world, entity) && weapon.AccuracyRelaxedMultiplier > 0 {
+		spread *= weapon.AccuracyRelaxedMultiplier
+	}
+
+	if weapon.AccuracyMinSpreadRadians > 0 {
+		spread = math.Max(spread, weapon.AccuracyMinSpreadRadians)
+	}
+
+	return math.Max(0, spread)
+}
+
+func isRelaxedMood(world *ecs.World, entity ecs.Entity) bool {
+	enemyAI, ok := world.EnemyAI(entity)
+	if !ok {
+		return false
+	}
+
+	return enemyAI.Behavior == ecscomponents.EnemyBehaviorCautious
+}
+
+func deterministicSpreadOffset(entity ecs.Entity, shotIndex uint64, maxSpreadRadians float64) float64 {
+	if maxSpreadRadians <= 0 {
+		return 0
+	}
+
+	roll := deterministicShotUnit(entity, shotIndex)
+	return (roll*2 - 1) * maxSpreadRadians
+}
+
+func deterministicShotUnit(entity ecs.Entity, shotIndex uint64) float64 {
+	x := uint64(entity)*0x9e3779b97f4a7c15 + (shotIndex+1)*0xbf58476d1ce4e5b9
+	x ^= x >> 30
+	x *= 0xbf58476d1ce4e5b9
+	x ^= x >> 27
+	x *= 0x94d049bb133111eb
+	x ^= x >> 31
+
+	return float64(x>>11) / float64(uint64(1)<<53)
 }
 
 func UpdateLifetimes(world *ecs.World, deltaSeconds float64) error {

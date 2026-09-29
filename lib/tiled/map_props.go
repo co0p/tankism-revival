@@ -144,18 +144,38 @@ func (m *Map) ClearPropsObjectsOnLayer(layerName string) error {
 }
 
 func (m *Map) Spawn(name string) (Object, bool) {
-	l := m.layerByName(SpawnLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
+	spawns := m.Spawns(name)
+	if len(spawns) == 0 {
 		return Object{}, false
 	}
 
+	return spawns[0], true
+}
+
+func (m *Map) Spawns(name string) []Object {
+	l := m.layerByName(SpawnLayerName)
+	if l == nil || l.Type != defaultObjectLayerType {
+		return nil
+	}
+
+	spawns := make([]Object, 0, len(l.Objects))
 	for _, obj := range l.Objects {
 		if obj.Name == name {
-			return obj, true
+			spawns = append(spawns, obj)
 		}
 	}
 
-	return Object{}, false
+	slices.SortFunc(spawns, func(a, b Object) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
+
+	return spawns
 }
 
 func (m *Map) SetSpawn(name string, worldX, worldY float64) error {
@@ -187,4 +207,53 @@ func (m *Map) SetSpawn(name string, worldX, worldY float64) error {
 	})
 
 	return nil
+}
+
+func (m *Map) AddSpawn(name string, worldX, worldY float64) error {
+	l := m.layerByName(SpawnLayerName)
+	if l == nil || l.Type != defaultObjectLayerType {
+		return fmt.Errorf("%q layer missing", SpawnLayerName)
+	}
+
+	l.Objects = append(l.Objects, Object{
+		ID:      m.nextObjectID(),
+		Name:    name,
+		Type:    "spawn",
+		X:       worldX,
+		Y:       worldY,
+		Point:   true,
+		Visible: true,
+	})
+
+	return nil
+}
+
+func (m *Map) RemoveNearestSpawn(name string, worldX, worldY, maxDistance float64) (bool, error) {
+	l := m.layerByName(SpawnLayerName)
+	if l == nil || l.Type != defaultObjectLayerType {
+		return false, fmt.Errorf("%q layer missing", SpawnLayerName)
+	}
+
+	closestIdx := -1
+	closestDist := maxDistance
+
+	for i := range l.Objects {
+		obj := l.Objects[i]
+		if obj.Name != name {
+			continue
+		}
+
+		distance := math.Hypot(obj.X-worldX, obj.Y-worldY)
+		if distance <= closestDist {
+			closestDist = distance
+			closestIdx = i
+		}
+	}
+
+	if closestIdx < 0 {
+		return false, nil
+	}
+
+	l.Objects = slices.Delete(l.Objects, closestIdx, closestIdx+1)
+	return true, nil
 }

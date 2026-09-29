@@ -18,6 +18,7 @@ type Component interface {
 		ecscomponents.TankAcceleration |
 		ecscomponents.TankDeceleration |
 		ecscomponents.TankVelocity |
+		ecscomponents.EnemyAI |
 		ecscomponents.Health |
 		ecscomponents.Weapon |
 		ecscomponents.Projectile |
@@ -93,6 +94,13 @@ type TankMover struct {
 	Intent       ecscomponents.TankControlIntent
 }
 
+type EnemyAITank struct {
+	Entity    Entity
+	Transform ecscomponents.Transform
+	Drive     ecscomponents.TankDrive
+	EnemyAI   ecscomponents.EnemyAI
+}
+
 type World struct {
 	nextEntityID Entity
 	alive        map[Entity]struct{}
@@ -103,6 +111,7 @@ type World struct {
 	acceleration map[Entity]ecscomponents.TankAcceleration
 	deceleration map[Entity]ecscomponents.TankDeceleration
 	velocity     map[Entity]ecscomponents.TankVelocity
+	enemyAI      map[Entity]ecscomponents.EnemyAI
 	health       map[Entity]ecscomponents.Health
 	weapons      map[Entity]ecscomponents.Weapon
 	projectiles  map[Entity]ecscomponents.Projectile
@@ -129,6 +138,7 @@ func NewWorld() *World {
 		acceleration: make(map[Entity]ecscomponents.TankAcceleration),
 		deceleration: make(map[Entity]ecscomponents.TankDeceleration),
 		velocity:     make(map[Entity]ecscomponents.TankVelocity),
+		enemyAI:      make(map[Entity]ecscomponents.EnemyAI),
 		health:       make(map[Entity]ecscomponents.Health),
 		weapons:      make(map[Entity]ecscomponents.Weapon),
 		projectiles:  make(map[Entity]ecscomponents.Projectile),
@@ -171,6 +181,7 @@ func (w *World) DestroyEntity(entity Entity) bool {
 	delete(w.acceleration, entity)
 	delete(w.deceleration, entity)
 	delete(w.velocity, entity)
+	delete(w.enemyAI, entity)
 	delete(w.health, entity)
 	delete(w.weapons, entity)
 	delete(w.projectiles, entity)
@@ -208,6 +219,8 @@ func AttachComponent[T Component](w *World, entity Entity, component T) error {
 		w.deceleration[entity] = c
 	case ecscomponents.TankVelocity:
 		w.velocity[entity] = c
+	case ecscomponents.EnemyAI:
+		w.enemyAI[entity] = c
 	case ecscomponents.Health:
 		w.health[entity] = c
 	case ecscomponents.Weapon:

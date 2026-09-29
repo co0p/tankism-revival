@@ -12,24 +12,26 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
-func (g *Game) drawSpawn(screen *ebiten.Image, spawnName string, markerColor color.Color, cellPx, originX, originY int) {
-	spawn, ok := g.doc.Spawn(spawnName)
-	if !ok || g.doc.TileWidth <= 0 || g.doc.TileHeight <= 0 {
+func (g *Game) drawSpawns(screen *ebiten.Image, spawnName string, markerColor color.Color, cellPx, originX, originY int) {
+	spawns := g.doc.Spawns(spawnName)
+	if len(spawns) == 0 || g.doc.TileWidth <= 0 || g.doc.TileHeight <= 0 {
 		return
 	}
 
-	screenX := originX + int((spawn.X/float64(g.doc.TileWidth))*float64(cellPx))
-	screenY := originY + int((spawn.Y/float64(g.doc.TileHeight))*float64(cellPx))
-
 	size := mathutil.MaxInt(5, cellPx/3)
-	ebitenutil.DrawRect(
-		screen,
-		float64(screenX-size/2),
-		float64(screenY-size/2),
-		float64(size),
-		float64(size),
-		markerColor,
-	)
+	for _, spawn := range spawns {
+		screenX := originX + int((spawn.X/float64(g.doc.TileWidth))*float64(cellPx))
+		screenY := originY + int((spawn.Y/float64(g.doc.TileHeight))*float64(cellPx))
+
+		ebitenutil.DrawRect(
+			screen,
+			float64(screenX-size/2),
+			float64(screenY-size/2),
+			float64(size),
+			float64(size),
+			markerColor,
+		)
+	}
 }
 
 func (g *Game) drawTileLayer(screen *ebiten.Image, layerName string, cellPx, originX, originY int) {

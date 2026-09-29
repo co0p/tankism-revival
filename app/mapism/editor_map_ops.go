@@ -100,6 +100,27 @@ func (g *Game) setSpawnAtCursor(name string) error {
 	return g.doc.SetSpawn(name, worldX, worldY)
 }
 
+func (g *Game) addSpawnAtCursor(name string) error {
+	cx, cy, ok := g.hoveredCell()
+	if !ok {
+		return fmt.Errorf("cursor is outside the map")
+	}
+
+	worldX := float64(cx*g.doc.TileWidth) + float64(g.doc.TileWidth)/2
+	worldY := float64(cy*g.doc.TileHeight) + float64(g.doc.TileHeight)/2
+	return g.doc.AddSpawn(name, worldX, worldY)
+}
+
+func (g *Game) removeNearestSpawnAtCursor(name string) (bool, error) {
+	worldX, worldY, ok := g.cursorWorldPosition()
+	if !ok {
+		return false, fmt.Errorf("cursor is outside the map")
+	}
+
+	maxDistance := float64(g.doc.TileWidth) * 0.75
+	return g.doc.RemoveNearestSpawn(name, worldX, worldY, maxDistance)
+}
+
 func (g *Game) hoveredCell() (cellX, cellY int, ok bool) {
 	cellPx, originX, originY := g.viewMetrics()
 	if cellPx <= 0 {

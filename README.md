@@ -77,7 +77,8 @@ Controls:
 - Right click: remove nearest selected props object
 - `R` / `Shift+R`: rotate selected placement by 1° clockwise/counter-clockwise (hold to repeat; ground tiles snap to 90°)
 - `P`: set player spawn at cursor
-- `E`: set enemy spawn at cursor
+- `E`: add enemy spawn at cursor
+- `Shift+E`: remove nearest enemy spawn
 - `Ctrl+Shift+Arrow keys`: resize map in tiles
 - `Ctrl+S`: save map
 - `Ctrl+L`: reload map from disk

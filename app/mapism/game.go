@@ -154,10 +154,22 @@ func (g *Game) Update() error {
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
-		if err := g.setSpawnAtCursor(tiled.EnemySpawnObjectName); err != nil {
-			g.status = err.Error()
+		if ebiten.IsKeyPressed(ebiten.KeyShift) {
+			removed, err := g.removeNearestSpawnAtCursor(tiled.EnemySpawnObjectName)
+			if err != nil {
+				g.status = err.Error()
+			} else if removed {
+				g.status = "removed nearest enemy spawn"
+			} else {
+				g.status = "no enemy spawn near cursor"
+			}
 		} else {
-			g.status = "set enemy spawn"
+			if err := g.addSpawnAtCursor(tiled.EnemySpawnObjectName); err != nil {
+				g.status = err.Error()
+			} else {
+				count := len(g.doc.Spawns(tiled.EnemySpawnObjectName))
+				g.status = fmt.Sprintf("added enemy spawn (%d total)", count)
+			}
 		}
 	}
 
@@ -231,8 +243,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	g.drawSpawn(screen, tiled.PlayerSpawnObjectName, playerSpawnColor, cellPx, originX, originY)
-	g.drawSpawn(screen, tiled.EnemySpawnObjectName, enemySpawnColor, cellPx, originX, originY)
+	g.drawSpawns(screen, tiled.PlayerSpawnObjectName, playerSpawnColor, cellPx, originX, originY)
+	g.drawSpawns(screen, tiled.EnemySpawnObjectName, enemySpawnColor, cellPx, originX, originY)
 	g.drawCursorPreview(screen, cellPx, originX, originY)
 	g.drawPalettePanel(screen)
 
@@ -244,10 +256,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 
 	propsCount := len(g.doc.AllPropsObjects())
+	enemySpawnsCount := len(g.doc.Spawns(tiled.EnemySpawnObjectName))
 
 	selected := g.palette[g.selectedPalette]
 	message := fmt.Sprintf(
-		"Mapism (%s)\nScroll wheel over palette: select sprite | Left drag: paint ground / left click: place props | Right drag / right click: erase\nP: set player spawn | E: set enemy spawn | N: clear ground+props layers | Ctrl+Shift+Arrows: resize map\nR/Shift+R: rotate ±1° (hold; ground snaps to 90°) | Ctrl+S: save | Ctrl+L: reload | G: toggle grid%s\nselected: %s (gid=%d layer=%s rot=%d°) | map: %dx%d | props: %d | status: %s",
+		"Mapism (%s)\nScroll wheel over palette: select sprite | Left drag: paint ground / left click: place props | Right drag / right click: erase\nP: set player spawn | E: add enemy spawn | Shift+E: remove nearest enemy spawn | N: clear ground+props layers | Ctrl+Shift+Arrows: resize map\nR/Shift+R: rotate ±1° (hold; ground snaps to 90°) | Ctrl+S: save | Ctrl+L: reload | G: toggle grid%s\nselected: %s (gid=%d layer=%s rot=%d°) | map: %dx%d | props: %d | enemy spawns: %d | status: %s",
 		g.mapPath,
 		hoverInfo,
 		selected.ID,
@@ -257,6 +270,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.doc.Width,
 		g.doc.Height,
 		propsCount,
+		enemySpawnsCount,
 		g.status,
 	)
 

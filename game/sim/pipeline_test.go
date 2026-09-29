@@ -16,13 +16,15 @@ func TestDefaultPipelineSpecsOrder(t *testing.T) {
 	}
 
 	want := []string{
-		"ai_chaser_intent",
+		"ai_enemy_markov_astar_intent",
 		"tank_movement_integration",
 		"engine_audio_volume",
 		"weapon_cooldowns_and_projectile_spawn",
 		"sound_volume_by_proximity",
 		"projectile_integration",
 		"projectile_impacts",
+		"tank_destruction_effects",
+		"tank_tank_collision_resolution",
 		"tank_obstacle_collision_resolution",
 		"lifetime_expiration",
 		"player_clamp_to_map_bounds",
@@ -75,6 +77,24 @@ func TestDefaultPipelineSpecsDeclareDependencies(t *testing.T) {
 	}
 
 	assertDependsOn(
+		"ai_enemy_markov_astar_intent",
+		[]ecscomponents.Kind{
+			ecscomponents.KindTransform,
+			ecscomponents.KindTankDrive,
+			ecscomponents.KindHealth,
+			ecscomponents.KindWeapon,
+			ecscomponents.KindCircleCollider,
+			ecscomponents.KindSolidObstacle,
+			ecscomponents.KindMapBounds,
+			ecscomponents.KindEnemyAI,
+		},
+		[]ecscomponents.Kind{
+			ecscomponents.KindTankControlIntent,
+			ecscomponents.KindEnemyAI,
+		},
+	)
+
+	assertDependsOn(
 		"tank_movement_integration",
 		[]ecscomponents.Kind{
 			ecscomponents.KindTransform,
@@ -107,8 +127,10 @@ func TestDefaultPipelineSpecsDeclareDependencies(t *testing.T) {
 		[]ecscomponents.Kind{
 			ecscomponents.KindTransform,
 			ecscomponents.KindTankDrive,
+			ecscomponents.KindTankVelocity,
 			ecscomponents.KindTankControlIntent,
 			ecscomponents.KindWeapon,
+			ecscomponents.KindEnemyAI,
 			ecscomponents.KindAudioPlayer,
 		},
 		[]ecscomponents.Kind{
@@ -148,6 +170,39 @@ func TestDefaultPipelineSpecsDeclareDependencies(t *testing.T) {
 		[]ecscomponents.Kind{
 			ecscomponents.KindHealth,
 			ecscomponents.KindProjectile,
+		},
+	)
+
+	assertDependsOn(
+		"tank_destruction_effects",
+		[]ecscomponents.Kind{
+			ecscomponents.KindHealth,
+			ecscomponents.KindTransform,
+			ecscomponents.KindTankDrive,
+			ecscomponents.KindEnemyAI,
+		},
+		[]ecscomponents.Kind{
+			ecscomponents.KindHealth,
+			ecscomponents.KindTransform,
+			ecscomponents.KindSpriteRenderer,
+			ecscomponents.KindCircleCollider,
+			ecscomponents.KindSolidObstacle,
+			ecscomponents.KindLifetime,
+			ecscomponents.KindPointLight,
+			ecscomponents.KindTankDrive,
+			ecscomponents.KindEnemyAI,
+		},
+	)
+
+	assertDependsOn(
+		"tank_tank_collision_resolution",
+		[]ecscomponents.Kind{
+			ecscomponents.KindTransform,
+			ecscomponents.KindCircleCollider,
+			ecscomponents.KindTankDrive,
+		},
+		[]ecscomponents.Kind{
+			ecscomponents.KindTransform,
 		},
 	)
 

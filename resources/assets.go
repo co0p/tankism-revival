@@ -28,6 +28,12 @@ const (
 	ShotRedPath    = "images/kenney_topdown_tanks_redux/shot_red.png"
 	ShotOrangePath = "images/kenney_topdown_tanks_redux/shot_orange.png"
 
+	Explosion3Path      = "images/kenney_topdown_tanks_redux/explosion_3.png"
+	ExplosionSmoke3Path = "images/kenney_topdown_tanks_redux/explosion_smoke_3.png"
+	Explosion1Path      = "images/kenney_topdown_tanks_redux/explosion_1.png"
+	ExplosionSmoke1Path = "images/kenney_topdown_tanks_redux/explosion_smoke_1.png"
+	TankBodyDarkPath    = "images/kenney_topdown_tanks_redux/tank_body_dark.png"
+
 	CannonFireSFXPath = "audio/opengameart_top_down_shooter/cannon_fire.ogg"
 	EngineLoopSFXPath = "audio/opengameart_top_down_shooter/engine_heavy_loop.ogg"
 )

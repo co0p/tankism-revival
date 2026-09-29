@@ -309,3 +309,39 @@ func (w *World) TankHealthStates() []TankHealthState {
 
 	return states
 }
+
+func (w *World) EnemyAITanks() []EnemyAITank {
+	tanks := make([]EnemyAITank, 0, len(w.enemyAI))
+
+	for entity, enemyAI := range w.enemyAI {
+		transform, hasTransform := w.transforms[entity]
+		if !hasTransform {
+			continue
+		}
+
+		drive, hasDrive := w.drives[entity]
+		if !hasDrive {
+			continue
+		}
+
+		tanks = append(tanks, EnemyAITank{
+			Entity:    entity,
+			Transform: transform,
+			Drive:     drive,
+			EnemyAI:   enemyAI,
+		})
+	}
+
+	slices.SortFunc(tanks, func(a, b EnemyAITank) int {
+		if a.Entity < b.Entity {
+			return -1
+		}
+		if a.Entity > b.Entity {
+			return 1
+		}
+
+		return 0
+	})
+
+	return tanks
+}

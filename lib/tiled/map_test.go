@@ -19,6 +19,9 @@ func TestNewOrthogonalMapIncludesEditorLayers(t *testing.T) {
 	if _, ok := m.Spawn(EnemySpawnObjectName); !ok {
 		t.Fatalf("enemy spawn should exist")
 	}
+	if got := len(m.Spawns(EnemySpawnObjectName)); got != 1 {
+		t.Fatalf("expected one default enemy spawn, got %d", got)
+	}
 
 	if gid, ok := m.TileGIDAtLayer(GroundLayerName, 0, 0); !ok || gid != 0 {
 		t.Fatalf("ground layer should exist and start empty")
@@ -142,6 +145,47 @@ func TestPropsObjectsCanBeAddedAndRemoved(t *testing.T) {
 	}
 	if props[0].GID != 4 {
 		t.Fatalf("expected remaining props gid=4, got %d", props[0].GID)
+	}
+}
+
+func TestEnemySpawnsCanBeAddedAndRemoved(t *testing.T) {
+	m := NewOrthogonalMap(10, 10, 32, 32)
+
+	if err := m.SetSpawn(PlayerSpawnObjectName, 32, 32); err != nil {
+		t.Fatalf("set player spawn: %v", err)
+	}
+
+	if err := m.SetSpawn(EnemySpawnObjectName, 64, 64); err != nil {
+		t.Fatalf("set enemy spawn: %v", err)
+	}
+	if err := m.AddSpawn(EnemySpawnObjectName, 96, 64); err != nil {
+		t.Fatalf("add enemy spawn 1: %v", err)
+	}
+	if err := m.AddSpawn(EnemySpawnObjectName, 128, 64); err != nil {
+		t.Fatalf("add enemy spawn 2: %v", err)
+	}
+
+	enemySpawns := m.Spawns(EnemySpawnObjectName)
+	if len(enemySpawns) != 3 {
+		t.Fatalf("expected 3 enemy spawns, got %d", len(enemySpawns))
+	}
+
+	removed, err := m.RemoveNearestSpawn(EnemySpawnObjectName, 99, 66, 20)
+	if err != nil {
+		t.Fatalf("remove nearest enemy spawn: %v", err)
+	}
+	if !removed {
+		t.Fatalf("expected nearest enemy spawn to be removed")
+	}
+
+	enemySpawns = m.Spawns(EnemySpawnObjectName)
+	if len(enemySpawns) != 2 {
+		t.Fatalf("expected 2 enemy spawns after removal, got %d", len(enemySpawns))
+	}
+
+	playerSpawns := m.Spawns(PlayerSpawnObjectName)
+	if len(playerSpawns) != 1 {
+		t.Fatalf("expected exactly one player spawn, got %d", len(playerSpawns))
 	}
 }
 

@@ -69,6 +69,15 @@ func (w *World) TankVelocity(entity Entity) (ecscomponents.TankVelocity, bool) {
 	return velocity, ok
 }
 
+func (w *World) SetEnemyAI(entity Entity, enemyAI ecscomponents.EnemyAI) error {
+	return AttachComponent(w, entity, enemyAI)
+}
+
+func (w *World) EnemyAI(entity Entity) (ecscomponents.EnemyAI, bool) {
+	enemyAI, ok := w.enemyAI[entity]
+	return enemyAI, ok
+}
+
 func (w *World) SetHealth(entity Entity, health ecscomponents.Health) error {
 	return AttachComponent(w, entity, health)
 }

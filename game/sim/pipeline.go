@@ -21,7 +21,6 @@ type SystemSpec struct {
 
 type PipelineConfig struct {
 	PlayerEntity        ecs.Entity
-	EnemyEntity         ecs.Entity
 	MapEntity           ecs.Entity
 	AudioListenerEntity ecs.Entity
 
@@ -29,6 +28,8 @@ type PipelineConfig struct {
 
 	ProjectileZIndex  int
 	MuzzleFlashZIndex int
+
+	TankDestruction TankDestructionConfig
 
 	Camera CameraFollower
 
@@ -44,12 +45,21 @@ type runtimeSystem struct {
 var defaultPipeline = []runtimeSystem{
 	{
 		spec: SystemSpec{
-			Name:   "ai_chaser_intent",
-			Reads:  []ecscomponents.Kind{ecscomponents.KindTransform, ecscomponents.KindTankControlIntent},
-			Writes: []ecscomponents.Kind{ecscomponents.KindTankControlIntent},
+			Name: "ai_enemy_markov_astar_intent",
+			Reads: []ecscomponents.Kind{
+				ecscomponents.KindTransform,
+				ecscomponents.KindTankDrive,
+				ecscomponents.KindHealth,
+				ecscomponents.KindWeapon,
+				ecscomponents.KindCircleCollider,
+				ecscomponents.KindSolidObstacle,
+				ecscomponents.KindMapBounds,
+				ecscomponents.KindEnemyAI,
+			},
+			Writes: []ecscomponents.Kind{ecscomponents.KindTankControlIntent, ecscomponents.KindEnemyAI},
 		},
-		run: func(world *ecs.World, _ float64, cfg PipelineConfig) error {
-			return UpdateChaserIntent(world, cfg.EnemyEntity, cfg.PlayerEntity, cfg.EnemyStopDistance)
+		run: func(world *ecs.World, deltaSeconds float64, cfg PipelineConfig) error {
+			return UpdateEnemyTankIntents(world, cfg.PlayerEntity, cfg.MapEntity, cfg.EnemyStopDistance, deltaSeconds)
 		},
 	},
 	{
@@ -90,8 +100,10 @@ var defaultPipeline = []runtimeSystem{
 			Reads: []ecscomponents.Kind{
 				ecscomponents.KindTransform,
 				ecscomponents.KindTankDrive,
+				ecscomponents.KindTankVelocity,
 				ecscomponents.KindTankControlIntent,
 				ecscomponents.KindWeapon,
+				ecscomponents.KindEnemyAI,
 				ecscomponents.KindAudioPlayer,
 			},
 			Writes: []ecscomponents.Kind{
@@ -152,6 +164,45 @@ var defaultPipeline = []runtimeSystem{
 	},
 	{
 		spec: SystemSpec{
+			Name: "tank_destruction_effects",
+			Reads: []ecscomponents.Kind{
+				ecscomponents.KindHealth,
+				ecscomponents.KindTransform,
+				ecscomponents.KindTankDrive,
+				ecscomponents.KindEnemyAI,
+			},
+			Writes: []ecscomponents.Kind{
+				ecscomponents.KindHealth,
+				ecscomponents.KindTransform,
+				ecscomponents.KindSpriteRenderer,
+				ecscomponents.KindCircleCollider,
+				ecscomponents.KindSolidObstacle,
+				ecscomponents.KindLifetime,
+				ecscomponents.KindPointLight,
+				ecscomponents.KindTankDrive,
+				ecscomponents.KindEnemyAI,
+			},
+		},
+		run: func(world *ecs.World, _ float64, cfg PipelineConfig) error {
+			return ResolveTankDestructions(world, cfg.PlayerEntity, cfg.TankDestruction)
+		},
+	},
+	{
+		spec: SystemSpec{
+			Name: "tank_tank_collision_resolution",
+			Reads: []ecscomponents.Kind{
+				ecscomponents.KindTransform,
+				ecscomponents.KindCircleCollider,
+				ecscomponents.KindTankDrive,
+			},
+			Writes: []ecscomponents.Kind{ecscomponents.KindTransform},
+		},
+		run: func(world *ecs.World, _ float64, _ PipelineConfig) error {
+			return ResolveTankTankCollisions(world)
+		},
+	},
+	{
+		spec: SystemSpec{
 			Name: "tank_obstacle_collision_resolution",
 			Reads: []ecscomponents.Kind{
 				ecscomponents.KindTransform,
@@ -188,11 +239,11 @@ var defaultPipeline = []runtimeSystem{
 	{
 		spec: SystemSpec{
 			Name:   "enemy_clamp_to_map_bounds",
-			Reads:  []ecscomponents.Kind{ecscomponents.KindTransform, ecscomponents.KindMapBounds},
+			Reads:  []ecscomponents.Kind{ecscomponents.KindTransform, ecscomponents.KindMapBounds, ecscomponents.KindEnemyAI},
 			Writes: []ecscomponents.Kind{ecscomponents.KindTransform},
 		},
 		run: func(world *ecs.World, _ float64, cfg PipelineConfig) error {
-			return clampEntityToBounds(world, cfg.EnemyEntity, cfg.MapEntity, false)
+			return clampEnemyEntitiesToBounds(world, cfg.MapEntity)
 		},
 	},
 	{
@@ -311,6 +362,16 @@ func clampEntityToBounds(world *ecs.World, entity, mapEntity ecs.Entity, require
 
 	if err := world.SetTransform(entity, transform); err != nil {
 		return fmt.Errorf("set clamped transform for entity %d: %w", entity, err)
+	}
+
+	return nil
+}
+
+func clampEnemyEntitiesToBounds(world *ecs.World, mapEntity ecs.Entity) error {
+	for _, enemy := range world.EnemyAITanks() {
+		if err := clampEntityToBounds(world, enemy.Entity, mapEntity, false); err != nil {
+			return err
+		}
 	}
 
 	return nil

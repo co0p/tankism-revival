@@ -10,6 +10,7 @@ const (
 	KindTankAcceleration      Kind = "tank_acceleration"
 	KindTankDeceleration      Kind = "tank_deceleration"
 	KindTankVelocity          Kind = "tank_velocity"
+	KindEnemyAI               Kind = "enemy_ai"
 	KindWeapon                Kind = "weapon"
 	KindProjectile            Kind = "projectile"
 	KindLifetime              Kind = "lifetime"

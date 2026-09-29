@@ -64,6 +64,9 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 	if result.EnemySpawnX != 112 || result.EnemySpawnY != 24 {
 		t.Fatalf("unexpected enemy spawn: (%f,%f)", result.EnemySpawnX, result.EnemySpawnY)
 	}
+	if len(result.EnemySpawns) != 1 {
+		t.Fatalf("expected one enemy spawn, got %d", len(result.EnemySpawns))
+	}
 
 	renderables := world.Renderables()
 	if len(renderables) != 4 {
@@ -159,5 +162,47 @@ func TestSeedFromTiledMapClampsSpawnsToBounds(t *testing.T) {
 	}
 	if result.EnemySpawnX != 64 || result.EnemySpawnY != 0 {
 		t.Fatalf("enemy spawn should be clamped to bounds, got (%f,%f)", result.EnemySpawnX, result.EnemySpawnY)
+	}
+	if len(result.EnemySpawns) != 1 || result.EnemySpawns[0].X != 64 || result.EnemySpawns[0].Y != 0 {
+		t.Fatalf("expected one clamped enemy spawn point, got %+v", result.EnemySpawns)
+	}
+}
+
+func TestSeedFromTiledMapReturnsMultipleEnemySpawns(t *testing.T) {
+	tempMapPath := filepath.Join(t.TempDir(), "seed_map_multi_enemy.tmj")
+
+	doc := tiled.NewOrthogonalMap(6, 4, 32, 32)
+	if err := doc.SetSpawn(tiled.EnemySpawnObjectName, 40, 30); err != nil {
+		t.Fatalf("set base enemy spawn: %v", err)
+	}
+	if err := doc.AddSpawn(tiled.EnemySpawnObjectName, 96, 64); err != nil {
+		t.Fatalf("add enemy spawn 1: %v", err)
+	}
+	if err := doc.AddSpawn(tiled.EnemySpawnObjectName, 1000, -10); err != nil {
+		t.Fatalf("add enemy spawn 2: %v", err)
+	}
+
+	if err := tiled.WriteFile(tempMapPath, doc); err != nil {
+		t.Fatalf("write map file: %v", err)
+	}
+
+	world := ecs.NewWorld()
+	result, err := SeedFromTiledMap(world, TiledSeedConfig{Path: tempMapPath})
+	if err != nil {
+		t.Fatalf("seed from tiled map: %v", err)
+	}
+
+	if len(result.EnemySpawns) != 3 {
+		t.Fatalf("expected 3 enemy spawns, got %d", len(result.EnemySpawns))
+	}
+
+	if result.EnemySpawns[0].X != 40 || result.EnemySpawns[0].Y != 30 {
+		t.Fatalf("unexpected first enemy spawn: (%f,%f)", result.EnemySpawns[0].X, result.EnemySpawns[0].Y)
+	}
+	if result.EnemySpawns[1].X != 96 || result.EnemySpawns[1].Y != 64 {
+		t.Fatalf("unexpected second enemy spawn: (%f,%f)", result.EnemySpawns[1].X, result.EnemySpawns[1].Y)
+	}
+	if result.EnemySpawns[2].X != 192 || result.EnemySpawns[2].Y != 0 {
+		t.Fatalf("expected clamped third enemy spawn, got (%f,%f)", result.EnemySpawns[2].X, result.EnemySpawns[2].Y)
 	}
 }

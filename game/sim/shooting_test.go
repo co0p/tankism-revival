@@ -256,3 +256,67 @@ func TestResolveProjectileImpactsStopsAtObstacle(t *testing.T) {
 		t.Fatalf("target should not take damage through obstacle, got %f", health.Current)
 	}
 }
+
+func TestEffectiveProjectileSpreadImprovesWhenStoppedAndRelaxed(t *testing.T) {
+	w := ecs.NewWorld()
+	tank := w.CreateEntity()
+
+	must(t, w.SetTankDrive(tank, ecscomponents.TankDrive{MoveSpeed: 120, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetTankVelocity(tank, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 0}))
+	must(t, w.SetEnemyAI(tank, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorCautious}))
+
+	weapon := ecscomponents.Weapon{
+		AccuracySpreadRadians:     0.10,
+		AccuracyMinSpreadRadians:  0.01,
+		AccuracyMovingSpread:      0.12,
+		AccuracyStoppedMultiplier: 0.5,
+		AccuracyRelaxedMultiplier: 0.7,
+	}
+
+	stoppedRelaxedSpread := effectiveProjectileSpread(w, tank, weapon)
+
+	must(t, w.SetEnemyAI(tank, ecscomponents.EnemyAI{Behavior: ecscomponents.EnemyBehaviorAggressive}))
+	must(t, w.SetTankVelocity(tank, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 120}))
+	movingAggressiveSpread := effectiveProjectileSpread(w, tank, weapon)
+
+	if stoppedRelaxedSpread >= movingAggressiveSpread {
+		t.Fatalf("expected stopped+relaxed spread to be tighter: stoppedRelaxed=%f movingAggressive=%f", stoppedRelaxedSpread, movingAggressiveSpread)
+	}
+}
+
+func TestUpdateWeaponsAndSpawnProjectilesAppliesDeterministicSpreadOffset(t *testing.T) {
+	w := ecs.NewWorld()
+	tank := w.CreateEntity()
+
+	must(t, w.SetTransform(tank, ecscomponents.Transform{X: 10, Y: 20, RotationRadians: 0}))
+	must(t, w.SetTankDrive(tank, ecscomponents.TankDrive{MoveSpeed: 100, TurnSpeedRadiansPS: 1}))
+	must(t, w.SetTankVelocity(tank, ecscomponents.TankVelocity{ForwardUnitsPerSecond: 0}))
+	must(t, w.SetTankControlIntent(tank, ecscomponents.TankControlIntent{Fire: true}))
+
+	weapon := ecscomponents.Weapon{
+		CooldownSeconds:           0.5,
+		ProjectileSpeed:           100,
+		ProjectileLifetime:        1,
+		ProjectileDamage:          5,
+		MuzzleOffset:              12,
+		AccuracySpreadRadians:     0.12,
+		AccuracyMinSpreadRadians:  0.12,
+		AccuracyStoppedMultiplier: 1,
+		ProjectileSpriteID:        "p",
+		ProjectileRadius:          2,
+	}
+	must(t, w.SetWeapon(tank, weapon))
+
+	if err := UpdateWeaponsAndSpawnProjectiles(w, 0.1, 99, 100); err != nil {
+		t.Fatalf("update weapons: %v", err)
+	}
+
+	projectiles := w.ProjectileStates()
+	if len(projectiles) != 1 {
+		t.Fatalf("expected 1 projectile, got %d", len(projectiles))
+	}
+
+	spread := effectiveProjectileSpread(w, tank, weapon)
+	expectedRotation := deterministicSpreadOffset(tank, 0, spread)
+	approxEqual(t, projectiles[0].Transform.RotationRadians, expectedRotation, 1e-9)
+}
