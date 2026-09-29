@@ -15,10 +15,6 @@ func (w *World) Transform(entity Entity) (ecscomponents.Transform, bool) {
 	return transform, ok
 }
 
-func (w *World) RemoveTransform(entity Entity) {
-	delete(w.transforms, entity)
-}
-
 func (w *World) SetSpriteRenderer(entity Entity, sprite ecscomponents.SpriteRenderer) error {
 	return AttachComponent(w, entity, sprite)
 }
@@ -26,10 +22,6 @@ func (w *World) SetSpriteRenderer(entity Entity, sprite ecscomponents.SpriteRend
 func (w *World) SpriteRenderer(entity Entity) (ecscomponents.SpriteRenderer, bool) {
 	sprite, ok := w.sprites[entity]
 	return sprite, ok
-}
-
-func (w *World) RemoveSpriteRenderer(entity Entity) {
-	delete(w.sprites, entity)
 }
 
 func (w *World) SetTankControlIntent(entity Entity, intent ecscomponents.TankControlIntent) error {
@@ -41,10 +33,6 @@ func (w *World) TankControlIntent(entity Entity) (ecscomponents.TankControlInten
 	return intent, ok
 }
 
-func (w *World) RemoveTankControlIntent(entity Entity) {
-	delete(w.intents, entity)
-}
-
 func (w *World) SetTankDrive(entity Entity, drive ecscomponents.TankDrive) error {
 	return AttachComponent(w, entity, drive)
 }
@@ -52,10 +40,6 @@ func (w *World) SetTankDrive(entity Entity, drive ecscomponents.TankDrive) error
 func (w *World) TankDrive(entity Entity) (ecscomponents.TankDrive, bool) {
 	drive, ok := w.drives[entity]
 	return drive, ok
-}
-
-func (w *World) RemoveTankDrive(entity Entity) {
-	delete(w.drives, entity)
 }
 
 func (w *World) SetTankAcceleration(entity Entity, acceleration ecscomponents.TankAcceleration) error {
@@ -67,10 +51,6 @@ func (w *World) TankAcceleration(entity Entity) (ecscomponents.TankAcceleration,
 	return acceleration, ok
 }
 
-func (w *World) RemoveTankAcceleration(entity Entity) {
-	delete(w.acceleration, entity)
-}
-
 func (w *World) SetTankDeceleration(entity Entity, deceleration ecscomponents.TankDeceleration) error {
 	return AttachComponent(w, entity, deceleration)
 }
@@ -78,10 +58,6 @@ func (w *World) SetTankDeceleration(entity Entity, deceleration ecscomponents.Ta
 func (w *World) TankDeceleration(entity Entity) (ecscomponents.TankDeceleration, bool) {
 	deceleration, ok := w.deceleration[entity]
 	return deceleration, ok
-}
-
-func (w *World) RemoveTankDeceleration(entity Entity) {
-	delete(w.deceleration, entity)
 }
 
 func (w *World) SetTankVelocity(entity Entity, velocity ecscomponents.TankVelocity) error {
@@ -93,10 +69,6 @@ func (w *World) TankVelocity(entity Entity) (ecscomponents.TankVelocity, bool) {
 	return velocity, ok
 }
 
-func (w *World) RemoveTankVelocity(entity Entity) {
-	delete(w.velocity, entity)
-}
-
 func (w *World) SetHealth(entity Entity, health ecscomponents.Health) error {
 	return AttachComponent(w, entity, health)
 }
@@ -104,10 +76,6 @@ func (w *World) SetHealth(entity Entity, health ecscomponents.Health) error {
 func (w *World) Health(entity Entity) (ecscomponents.Health, bool) {
 	health, ok := w.health[entity]
 	return health, ok
-}
-
-func (w *World) RemoveHealth(entity Entity) {
-	delete(w.health, entity)
 }
 
 func (w *World) SetWeapon(entity Entity, weapon ecscomponents.Weapon) error {
@@ -119,10 +87,6 @@ func (w *World) Weapon(entity Entity) (ecscomponents.Weapon, bool) {
 	return weapon, ok
 }
 
-func (w *World) RemoveWeapon(entity Entity) {
-	delete(w.weapons, entity)
-}
-
 func (w *World) SetProjectile(entity Entity, projectile ecscomponents.Projectile) error {
 	return AttachComponent(w, entity, projectile)
 }
@@ -130,10 +94,6 @@ func (w *World) SetProjectile(entity Entity, projectile ecscomponents.Projectile
 func (w *World) Projectile(entity Entity) (ecscomponents.Projectile, bool) {
 	projectile, ok := w.projectiles[entity]
 	return projectile, ok
-}
-
-func (w *World) RemoveProjectile(entity Entity) {
-	delete(w.projectiles, entity)
 }
 
 func (w *World) SetLifetime(entity Entity, lifetime ecscomponents.Lifetime) error {
@@ -145,10 +105,6 @@ func (w *World) Lifetime(entity Entity) (ecscomponents.Lifetime, bool) {
 	return lifetime, ok
 }
 
-func (w *World) RemoveLifetime(entity Entity) {
-	delete(w.lifetimes, entity)
-}
-
 func (w *World) SetCircleCollider(entity Entity, collider ecscomponents.CircleCollider) error {
 	return AttachComponent(w, entity, collider)
 }
@@ -156,10 +112,6 @@ func (w *World) SetCircleCollider(entity Entity, collider ecscomponents.CircleCo
 func (w *World) CircleCollider(entity Entity) (ecscomponents.CircleCollider, bool) {
 	collider, ok := w.colliders[entity]
 	return collider, ok
-}
-
-func (w *World) RemoveCircleCollider(entity Entity) {
-	delete(w.colliders, entity)
 }
 
 func (w *World) SetSolidObstacle(entity Entity) error {
@@ -171,10 +123,6 @@ func (w *World) IsSolidObstacle(entity Entity) bool {
 	return ok
 }
 
-func (w *World) RemoveSolidObstacle(entity Entity) {
-	delete(w.solid, entity)
-}
-
 func (w *World) SetMapBounds(entity Entity, bounds ecscomponents.MapBounds) error {
 	return AttachComponent(w, entity, bounds)
 }
@@ -182,10 +130,6 @@ func (w *World) SetMapBounds(entity Entity, bounds ecscomponents.MapBounds) erro
 func (w *World) MapBounds(entity Entity) (ecscomponents.MapBounds, bool) {
 	bounds, ok := w.mapBounds[entity]
 	return bounds, ok
-}
-
-func (w *World) RemoveMapBounds(entity Entity) {
-	delete(w.mapBounds, entity)
 }
 
 func (w *World) SetAmbientLight(entity Entity, light ecscomponents.AmbientLight) error {
@@ -197,10 +141,6 @@ func (w *World) AmbientLight(entity Entity) (ecscomponents.AmbientLight, bool) {
 	return light, ok
 }
 
-func (w *World) RemoveAmbientLight(entity Entity) {
-	delete(w.ambient, entity)
-}
-
 func (w *World) SetPointLight(entity Entity, light ecscomponents.PointLight) error {
 	return AttachComponent(w, entity, light)
 }
@@ -210,10 +150,6 @@ func (w *World) PointLight(entity Entity) (ecscomponents.PointLight, bool) {
 	return light, ok
 }
 
-func (w *World) RemovePointLight(entity Entity) {
-	delete(w.pointLights, entity)
-}
-
 func (w *World) SetAudioPlayer(entity Entity, player ecscomponents.AudioPlayer) error {
 	return AttachComponent(w, entity, player)
 }
@@ -221,10 +157,6 @@ func (w *World) SetAudioPlayer(entity Entity, player ecscomponents.AudioPlayer) 
 func (w *World) AudioPlayer(entity Entity) (ecscomponents.AudioPlayer, bool) {
 	player, ok := w.audioPlayers[entity]
 	return player, ok
-}
-
-func (w *World) RemoveAudioPlayer(entity Entity) {
-	delete(w.audioPlayers, entity)
 }
 
 func (w *World) SetPlaySoundIntent(entity Entity, intent ecscomponents.PlaySoundIntent) error {
@@ -273,10 +205,6 @@ func (w *World) SoundVolumeByDistance(entity Entity) (ecscomponents.SoundVolumeB
 	return volume, ok
 }
 
-func (w *World) RemoveSoundVolumeByDistance(entity Entity) {
-	delete(w.soundVolumes, entity)
-}
-
 func (w *World) SetEngineAudio(entity Entity, engineAudio ecscomponents.EngineAudio) error {
 	return AttachComponent(w, entity, engineAudio)
 }
@@ -284,10 +212,6 @@ func (w *World) SetEngineAudio(entity Entity, engineAudio ecscomponents.EngineAu
 func (w *World) EngineAudio(entity Entity) (ecscomponents.EngineAudio, bool) {
 	engineAudio, ok := w.engineAudio[entity]
 	return engineAudio, ok
-}
-
-func (w *World) RemoveEngineAudio(entity Entity) {
-	delete(w.engineAudio, entity)
 }
 
 func (w *World) EngineAudioEmitters() []EngineAudioEmitter {
