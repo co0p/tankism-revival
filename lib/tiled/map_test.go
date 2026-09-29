@@ -30,6 +30,9 @@ func TestNewOrthogonalMapIncludesEditorLayers(t *testing.T) {
 	if props := m.PropsObjects(); len(props) != 0 {
 		t.Fatalf("props layer should start empty")
 	}
+	if tallProps := m.PropsTallObjects(); len(tallProps) != 0 {
+		t.Fatalf("tall props layer should start empty")
+	}
 }
 
 func TestReadWriteRoundTrip(t *testing.T) {
@@ -42,6 +45,9 @@ func TestReadWriteRoundTrip(t *testing.T) {
 	}
 	if err := m.AddPropsObject(7, 120, 80, 20, 20, 90); err != nil {
 		t.Fatalf("add props object: %v", err)
+	}
+	if err := m.AddPropsObjectOnLayer(PropsTallLayerName, 12, 160, 100, 64, 64, 0); err != nil {
+		t.Fatalf("add tall props object: %v", err)
 	}
 	if err := m.SetSpawn(PlayerSpawnObjectName, 160, 224); err != nil {
 		t.Fatalf("set player spawn: %v", err)
@@ -70,6 +76,14 @@ func TestReadWriteRoundTrip(t *testing.T) {
 	}
 	if props[0].Rotation != 90 {
 		t.Fatalf("expected props rotation=90, got %f", props[0].Rotation)
+	}
+
+	tallProps := reloaded.PropsTallObjects()
+	if len(tallProps) != 1 {
+		t.Fatalf("expected one tall props object after reload, got %d", len(tallProps))
+	}
+	if tallProps[0].GID != 12 {
+		t.Fatalf("unexpected tall props gid: %d", tallProps[0].GID)
 	}
 
 	spawn, ok := reloaded.Spawn(PlayerSpawnObjectName)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -147,7 +148,7 @@ func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, 
 func (r *WorldRenderer) drawLighting(screen *ebiten.Image, world *ecs.World, camera Camera) {
 	ambientDarkness := combinedAmbientDarkness(world.AmbientLights())
 	if ambientDarkness > 0 {
-		overlayAlpha := uint8(clamp01(ambientDarkness) * 255)
+		overlayAlpha := uint8(mathutil.Clamp01(ambientDarkness) * 255)
 		bounds := screen.Bounds()
 		viewWidth := float64(bounds.Dx())
 		viewHeight := float64(bounds.Dy())
@@ -181,7 +182,7 @@ func (r *WorldRenderer) drawLighting(screen *ebiten.Image, world *ecs.World, cam
 		op.GeoM.Scale(scale, scale)
 		op.GeoM.Translate(screenX, screenY)
 
-		intensity := clamp01(source.Light.Intensity) * r.lightIntensityScale
+		intensity := mathutil.Clamp01(source.Light.Intensity) * r.lightIntensityScale
 		if intensity == 0 {
 			continue
 		}
@@ -203,7 +204,7 @@ func (r *WorldRenderer) drawTankHealthBars(screen *ebiten.Image, world *ecs.Worl
 			continue
 		}
 
-		ratio := clamp01(state.Health.Current / state.Health.Max)
+		ratio := mathutil.Clamp01(state.Health.Current / state.Health.Max)
 
 		screenX, screenY := camera.WorldToScreen(state.Transform.X, state.Transform.Y)
 		barX := screenX - r.healthBarWidth/2
@@ -263,7 +264,7 @@ func combinedAmbientDarkness(lights []ecscomponents.AmbientLight) float64 {
 		}
 	}
 
-	return clamp01(darkness)
+	return mathutil.Clamp01(darkness)
 }
 
 func newRadialLightSprite(diameter int) *ebiten.Image {
@@ -286,21 +287,10 @@ func newRadialLightSprite(diameter int) *ebiten.Image {
 			}
 
 			falloff := 1 - distance
-			alpha := uint8(clamp01(math.Pow(falloff, 3.0)) * 190)
+			alpha := uint8(mathutil.Clamp01(math.Pow(falloff, 3.0)) * 190)
 			img.Set(x, y, color.NRGBA{R: 255, G: 255, B: 255, A: alpha})
 		}
 	}
 
 	return ebiten.NewImageFromImage(img)
-}
-
-func clamp01(value float64) float64 {
-	if value < 0 {
-		return 0
-	}
-	if value > 1 {
-		return 1
-	}
-
-	return value
 }

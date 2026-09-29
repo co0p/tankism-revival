@@ -2,13 +2,14 @@ package tiled
 
 import (
 	"fmt"
-	"math"
-	"slices"
+
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 const (
 	GroundLayerName       = "ground"
 	PropsLayerName        = "props"
+	PropsTallLayerName    = "props_tall"
 	ObstacleLayerName     = "obstacles"
 	SpawnLayerName        = "spawns"
 	PlayerSpawnObjectName = "player_spawn"
@@ -150,6 +151,9 @@ func (m *Map) EnsureEditorLayers() error {
 	if err := m.ensurePropsLayer(); err != nil {
 		return err
 	}
+	if err := m.ensureTallPropsLayer(); err != nil {
+		return err
+	}
 	if err := m.ensureSpawnLayer(); err != nil {
 		return err
 	}
@@ -173,233 +177,6 @@ func (m *Map) Resize(width, height int) error {
 	m.Height = height
 
 	return m.EnsureEditorLayers()
-}
-
-func (m *Map) ObstacleAt(cellX, cellY int) (bool, bool) {
-	gid, ok := m.TileGIDAt(cellX, cellY)
-	if !ok {
-		return false, false
-	}
-
-	return gid != 0, true
-}
-
-func (m *Map) TileGIDAt(cellX, cellY int) (int, bool) {
-	return m.TileGIDAtLayer(ObstacleLayerName, cellX, cellY)
-}
-
-func (m *Map) TileGIDAtLayer(layerName string, cellX, cellY int) (int, bool) {
-	if cellX < 0 || cellY < 0 || cellX >= m.Width || cellY >= m.Height {
-		return 0, false
-	}
-
-	l := m.layerByName(layerName)
-	if l == nil || l.Type != defaultTileLayerType {
-		return 0, false
-	}
-
-	idx := cellY*m.Width + cellX
-	if idx < 0 || idx >= len(l.Data) {
-		return 0, false
-	}
-
-	return l.Data[idx], true
-}
-
-func (m *Map) SetObstacle(cellX, cellY int, blocked bool) error {
-	gid := 0
-	if blocked {
-		gid = 1
-	}
-
-	return m.SetTileGID(cellX, cellY, gid)
-}
-
-func (m *Map) SetTileGID(cellX, cellY, gid int) error {
-	return m.SetTileGIDOnLayer(ObstacleLayerName, cellX, cellY, gid)
-}
-
-func (m *Map) SetTileGIDOnLayer(layerName string, cellX, cellY, gid int) error {
-	if cellX < 0 || cellY < 0 || cellX >= m.Width || cellY >= m.Height {
-		return fmt.Errorf("cell out of bounds")
-	}
-	if gid < 0 {
-		return fmt.Errorf("gid cannot be negative")
-	}
-
-	l := m.layerByName(layerName)
-	if l == nil || l.Type != defaultTileLayerType {
-		return fmt.Errorf("%q tile layer missing", layerName)
-	}
-
-	idx := cellY*m.Width + cellX
-	if idx < 0 || idx >= len(l.Data) {
-		return fmt.Errorf("cell index out of bounds")
-	}
-
-	l.Data[idx] = gid
-	return nil
-}
-
-func (m *Map) ClearObstacles() error {
-	return m.ClearTileLayer(ObstacleLayerName)
-}
-
-func (m *Map) ClearTileLayer(layerName string) error {
-	l := m.layerByName(layerName)
-	if l == nil || l.Type != defaultTileLayerType {
-		return fmt.Errorf("%q tile layer missing", layerName)
-	}
-
-	for i := range l.Data {
-		l.Data[i] = 0
-	}
-
-	return nil
-}
-
-func (m *Map) PropsObjects() []Object {
-	l := m.layerByName(PropsLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return nil
-	}
-
-	objects := make([]Object, 0, len(l.Objects))
-	for _, obj := range l.Objects {
-		if obj.GID <= 0 {
-			continue
-		}
-		objects = append(objects, obj)
-	}
-
-	slices.SortFunc(objects, func(a, b Object) int {
-		if a.ID < b.ID {
-			return -1
-		}
-		if a.ID > b.ID {
-			return 1
-		}
-		return 0
-	})
-
-	return objects
-}
-
-func (m *Map) AddPropsObject(gid int, worldX, worldY, width, height, rotationDegrees float64) error {
-	if gid <= 0 {
-		return fmt.Errorf("props gid must be > 0")
-	}
-	if width <= 0 {
-		width = float64(m.TileWidth)
-	}
-	if height <= 0 {
-		height = float64(m.TileHeight)
-	}
-
-	l := m.layerByName(PropsLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return fmt.Errorf("%q object layer missing", PropsLayerName)
-	}
-
-	l.Objects = append(l.Objects, Object{
-		ID:       m.nextObjectID(),
-		Type:     defaultPropObjectType,
-		GID:      gid,
-		X:        worldX,
-		Y:        worldY,
-		Width:    width,
-		Height:   height,
-		Rotation: rotationDegrees,
-		Visible:  true,
-	})
-
-	return nil
-}
-
-func (m *Map) RemoveNearestPropsObject(worldX, worldY, maxDistance float64) (bool, error) {
-	l := m.layerByName(PropsLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return false, fmt.Errorf("%q object layer missing", PropsLayerName)
-	}
-
-	closestIdx := -1
-	closestDist := maxDistance
-
-	for i := range l.Objects {
-		obj := l.Objects[i]
-		if obj.GID <= 0 {
-			continue
-		}
-
-		distance := math.Hypot(obj.X-worldX, obj.Y-worldY)
-		if distance <= closestDist {
-			closestDist = distance
-			closestIdx = i
-		}
-	}
-
-	if closestIdx < 0 {
-		return false, nil
-	}
-
-	l.Objects = slices.Delete(l.Objects, closestIdx, closestIdx+1)
-	return true, nil
-}
-
-func (m *Map) ClearPropsObjects() error {
-	l := m.layerByName(PropsLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return fmt.Errorf("%q object layer missing", PropsLayerName)
-	}
-
-	l.Objects = l.Objects[:0]
-	return nil
-}
-
-func (m *Map) Spawn(name string) (Object, bool) {
-	l := m.layerByName(SpawnLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return Object{}, false
-	}
-
-	for _, obj := range l.Objects {
-		if obj.Name == name {
-			return obj, true
-		}
-	}
-
-	return Object{}, false
-}
-
-func (m *Map) SetSpawn(name string, worldX, worldY float64) error {
-	l := m.layerByName(SpawnLayerName)
-	if l == nil || l.Type != defaultObjectLayerType {
-		return fmt.Errorf("%q layer missing", SpawnLayerName)
-	}
-
-	for i := range l.Objects {
-		if l.Objects[i].Name != name {
-			continue
-		}
-
-		l.Objects[i].X = worldX
-		l.Objects[i].Y = worldY
-		l.Objects[i].Point = true
-		l.Objects[i].Visible = true
-		return nil
-	}
-
-	l.Objects = append(l.Objects, Object{
-		ID:      m.nextObjectID(),
-		Name:    name,
-		Type:    "spawn",
-		X:       worldX,
-		Y:       worldY,
-		Point:   true,
-		Visible: true,
-	})
-
-	return nil
 }
 
 func (m *Map) ensureTileLayer(layerName string) error {
@@ -507,6 +284,38 @@ func (m *Map) ensurePropsLayer() error {
 	return nil
 }
 
+func (m *Map) ensureTallPropsLayer() error {
+	tallPropsLayer := m.layerByName(PropsTallLayerName)
+	if tallPropsLayer == nil {
+		m.Layers = append(m.Layers, Layer{
+			ID:        m.nextLayerID(),
+			Name:      PropsTallLayerName,
+			Type:      defaultObjectLayerType,
+			Visible:   true,
+			Opacity:   1,
+			X:         0,
+			Y:         0,
+			DrawOrder: defaultObjectDrawOrder,
+		})
+		return nil
+	}
+
+	if tallPropsLayer.Type == "" {
+		tallPropsLayer.Type = defaultObjectLayerType
+	}
+	if tallPropsLayer.Type != defaultObjectLayerType {
+		return fmt.Errorf("layer %q must be type %q", PropsTallLayerName, defaultObjectLayerType)
+	}
+
+	tallPropsLayer.Visible = true
+	tallPropsLayer.Opacity = 1
+	if tallPropsLayer.DrawOrder == "" {
+		tallPropsLayer.DrawOrder = defaultObjectDrawOrder
+	}
+
+	return nil
+}
+
 func (m *Map) ensureSpawnLayer() error {
 	spawnLayer := m.layerByName(SpawnLayerName)
 	if spawnLayer == nil {
@@ -573,8 +382,8 @@ func resizeTileData(oldData []int, oldWidth, oldHeight, newWidth, newHeight int)
 		return resized
 	}
 
-	copyWidth := minInt(oldWidth, newWidth)
-	copyHeight := minInt(oldHeight, newHeight)
+	copyWidth := mathutil.MinInt(oldWidth, newWidth)
+	copyHeight := mathutil.MinInt(oldHeight, newHeight)
 
 	for row := 0; row < copyHeight; row++ {
 		oldRowStart := row * oldWidth
@@ -590,11 +399,4 @@ func resizeTileData(oldData []int, oldWidth, oldHeight, newWidth, newHeight int)
 	}
 
 	return resized
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

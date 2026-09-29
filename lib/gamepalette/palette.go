@@ -5,8 +5,9 @@ import gameassets "github.com/co0p/tankism-revival/resources"
 type Layer string
 
 const (
-	LayerGround Layer = "ground"
-	LayerProps  Layer = "props"
+	LayerGround    Layer = "ground"
+	LayerProps     Layer = "props"
+	LayerPropsTall Layer = "props_tall"
 )
 
 const (
@@ -38,38 +39,82 @@ const (
 
 type Sprite struct {
 	ID    string
+	GID   int
 	Path  string
 	Layer Layer
 }
 
+const (
+	GIDTileGrass1 = 1
+	GIDTileGrass2 = 2
+
+	GIDObstacleBarrelGrayTop = 3
+	GIDObstacleFenceRed      = 4
+	GIDObstacleCrateWood     = 5
+
+	GIDTankRedSmall  = 6
+	GIDTankBlueSmall = 7
+
+	GIDProjectileRed  = 8
+	GIDProjectileBlue = 9
+
+	GIDShotRed    = 10
+	GIDShotOrange = 11
+
+	GIDObstacleTreeGreenLarge = 12
+	GIDObstacleTreeGreenSmall = 13
+	GIDObstacleTreeBrownLarge = 14
+	GIDObstacleTreeBrownSmall = 15
+	GIDObstacleWireStraight   = 16
+	GIDObstacleWireCrooked    = 17
+	GIDObstacleTankCrossMetal = 18
+)
+
 var Sprites = []Sprite{
-	{ID: SpriteTileGrass1, Path: gameassets.TileGrass1Path, Layer: LayerGround},
-	{ID: SpriteTileGrass2, Path: gameassets.TileGrass2Path, Layer: LayerGround},
+	{ID: SpriteTileGrass1, GID: GIDTileGrass1, Path: gameassets.TileGrass1Path, Layer: LayerGround},
+	{ID: SpriteTileGrass2, GID: GIDTileGrass2, Path: gameassets.TileGrass2Path, Layer: LayerGround},
 
-	{ID: SpriteObstacleBarrelGrayTop, Path: gameassets.ObstacleBarrelGrayTopPath, Layer: LayerProps},
-	{ID: SpriteObstacleFenceRed, Path: gameassets.ObstacleFenceRedPath, Layer: LayerProps},
-	{ID: SpriteObstacleCrateWood, Path: gameassets.ObstacleCrateWoodPath, Layer: LayerProps},
+	{ID: SpriteObstacleBarrelGrayTop, GID: GIDObstacleBarrelGrayTop, Path: gameassets.ObstacleBarrelGrayTopPath, Layer: LayerProps},
+	{ID: SpriteObstacleFenceRed, GID: GIDObstacleFenceRed, Path: gameassets.ObstacleFenceRedPath, Layer: LayerProps},
+	{ID: SpriteObstacleCrateWood, GID: GIDObstacleCrateWood, Path: gameassets.ObstacleCrateWoodPath, Layer: LayerProps},
 
-	{ID: SpriteTankRedSmall, Path: gameassets.PlayerTankRedSmallPath, Layer: LayerProps},
-	{ID: SpriteTankBlueSmall, Path: gameassets.EnemyTankBlueSmallPath, Layer: LayerProps},
-	{ID: SpriteProjectileRed, Path: gameassets.ProjectileRedPath, Layer: LayerProps},
-	{ID: SpriteProjectileBlue, Path: gameassets.ProjectileBluePath, Layer: LayerProps},
-	{ID: SpriteShotRed, Path: gameassets.ShotRedPath, Layer: LayerProps},
-	{ID: SpriteShotOrange, Path: gameassets.ShotOrangePath, Layer: LayerProps},
+	{ID: SpriteTankRedSmall, GID: GIDTankRedSmall, Path: gameassets.PlayerTankRedSmallPath, Layer: LayerProps},
+	{ID: SpriteTankBlueSmall, GID: GIDTankBlueSmall, Path: gameassets.EnemyTankBlueSmallPath, Layer: LayerProps},
+	{ID: SpriteProjectileRed, GID: GIDProjectileRed, Path: gameassets.ProjectileRedPath, Layer: LayerProps},
+	{ID: SpriteProjectileBlue, GID: GIDProjectileBlue, Path: gameassets.ProjectileBluePath, Layer: LayerProps},
+	{ID: SpriteShotRed, GID: GIDShotRed, Path: gameassets.ShotRedPath, Layer: LayerProps},
+	{ID: SpriteShotOrange, GID: GIDShotOrange, Path: gameassets.ShotOrangePath, Layer: LayerProps},
 
-	{ID: SpriteObstacleTreeGreenLarge, Path: gameassets.ObstacleTreeGreenLargePath, Layer: LayerProps},
-	{ID: SpriteObstacleTreeGreenSmall, Path: gameassets.ObstacleTreeGreenSmallPath, Layer: LayerProps},
-	{ID: SpriteObstacleTreeBrownLarge, Path: gameassets.ObstacleTreeBrownLargePath, Layer: LayerProps},
-	{ID: SpriteObstacleTreeBrownSmall, Path: gameassets.ObstacleTreeBrownSmallPath, Layer: LayerProps},
-	{ID: SpriteObstacleWireStraight, Path: gameassets.ObstacleWireStraightPath, Layer: LayerProps},
-	{ID: SpriteObstacleWireCrooked, Path: gameassets.ObstacleWireCrookedPath, Layer: LayerProps},
-	{ID: SpriteObstacleTankCrossMetal, Path: gameassets.ObstacleTankCrossMetalPath, Layer: LayerProps},
+	{ID: SpriteObstacleTreeGreenLarge, GID: GIDObstacleTreeGreenLarge, Path: gameassets.ObstacleTreeGreenLargePath, Layer: LayerPropsTall},
+	{ID: SpriteObstacleTreeGreenSmall, GID: GIDObstacleTreeGreenSmall, Path: gameassets.ObstacleTreeGreenSmallPath, Layer: LayerPropsTall},
+	{ID: SpriteObstacleTreeBrownLarge, GID: GIDObstacleTreeBrownLarge, Path: gameassets.ObstacleTreeBrownLargePath, Layer: LayerPropsTall},
+	{ID: SpriteObstacleTreeBrownSmall, GID: GIDObstacleTreeBrownSmall, Path: gameassets.ObstacleTreeBrownSmallPath, Layer: LayerPropsTall},
+	{ID: SpriteObstacleWireStraight, GID: GIDObstacleWireStraight, Path: gameassets.ObstacleWireStraightPath, Layer: LayerProps},
+	{ID: SpriteObstacleWireCrooked, GID: GIDObstacleWireCrooked, Path: gameassets.ObstacleWireCrookedPath, Layer: LayerProps},
+	{ID: SpriteObstacleTankCrossMetal, GID: GIDObstacleTankCrossMetal, Path: gameassets.ObstacleTankCrossMetalPath, Layer: LayerProps},
+}
+
+var spriteByGID = func() map[int]Sprite {
+	indexed := make(map[int]Sprite, len(Sprites))
+	for _, sprite := range Sprites {
+		indexed[sprite.GID] = sprite
+	}
+
+	return indexed
+}()
+
+func MaxGID() int {
+	max := 0
+	for _, sprite := range Sprites {
+		if sprite.GID > max {
+			max = sprite.GID
+		}
+	}
+
+	return max
 }
 
 func SpriteByGID(gid int) (Sprite, bool) {
-	if gid <= 0 || gid > len(Sprites) {
-		return Sprite{}, false
-	}
-
-	return Sprites[gid-1], true
+	sprite, ok := spriteByGID[gid]
+	return sprite, ok
 }

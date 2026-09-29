@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 func UpdateEngineAudioVolumes(world *ecs.World, deltaSeconds float64) error {
@@ -15,12 +16,12 @@ func UpdateEngineAudioVolumes(world *ecs.World, deltaSeconds float64) error {
 		if emitter.Drive.MoveSpeed > 0 {
 			speedFactor = math.Abs(emitter.Velocity.ForwardUnitsPerSecond) / emitter.Drive.MoveSpeed
 		}
-		speedFactor = clamp(speedFactor, 0, 1)
+		speedFactor = mathutil.Clamp(speedFactor, 0, 1)
 
-		idleVolume := clamp(engineAudio.IdleVolume, 0, 1)
-		movingVolume := clamp(engineAudio.MovingVolume, 0, 1)
+		idleVolume := mathutil.Clamp(engineAudio.IdleVolume, 0, 1)
+		movingVolume := mathutil.Clamp(engineAudio.MovingVolume, 0, 1)
 		targetVolume := idleVolume + (movingVolume-idleVolume)*speedFactor
-		currentVolume := clamp(engineAudio.CurrentVolume, 0, 1)
+		currentVolume := mathutil.Clamp(engineAudio.CurrentVolume, 0, 1)
 
 		attackPerSec := engineAudio.AttackPerSec
 		releasePerSec := engineAudio.ReleasePerSec
@@ -44,7 +45,7 @@ func UpdateEngineAudioVolumes(world *ecs.World, deltaSeconds float64) error {
 			volumeDelta = -maxStep
 		}
 
-		engineAudio.CurrentVolume = clamp(currentVolume+volumeDelta, 0, 1)
+		engineAudio.CurrentVolume = mathutil.Clamp(currentVolume+volumeDelta, 0, 1)
 
 		if err := world.SetEngineAudio(emitter.Entity, engineAudio); err != nil {
 			return fmt.Errorf("set engine audio volume for entity %d: %w", emitter.Entity, err)

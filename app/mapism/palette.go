@@ -18,7 +18,7 @@ type paletteEntry struct {
 func buildPaletteEntries(loaded map[string]*ebiten.Image) ([]paletteEntry, error) {
 	entries := make([]paletteEntry, 0, len(gamepalette.Sprites))
 
-	for i, spriteDef := range gamepalette.Sprites {
+	for _, spriteDef := range gamepalette.Sprites {
 		image, ok := loaded[spriteDef.ID]
 		if !ok {
 			return nil, fmt.Errorf("palette sprite %q was not loaded", spriteDef.ID)
@@ -28,7 +28,7 @@ func buildPaletteEntries(loaded map[string]*ebiten.Image) ([]paletteEntry, error
 			ID:        spriteDef.ID,
 			AssetPath: spriteDef.Path,
 			Layer:     spriteDef.Layer,
-			GID:       i + 1,
+			GID:       spriteDef.GID,
 			Image:     image,
 		})
 	}

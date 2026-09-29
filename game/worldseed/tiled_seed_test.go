@@ -23,6 +23,9 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 	if err := doc.AddPropsObject(5, 100, 70, 28, 28, 45); err != nil {
 		t.Fatalf("add props object: %v", err)
 	}
+	if err := doc.AddPropsObject(12, 78, 46, 64, 64, 0); err != nil {
+		t.Fatalf("add tree props object: %v", err)
+	}
 	if err := doc.SetSpawn(tiled.PlayerSpawnObjectName, 64, 80); err != nil {
 		t.Fatalf("set player spawn: %v", err)
 	}
@@ -36,12 +39,14 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 
 	world := ecs.NewWorld()
 	result, err := SeedFromTiledMap(world, TiledSeedConfig{
-		Path:         tempMapPath,
-		GroundZIndex: 10,
-		PropsZIndex:  20,
+		Path:            tempMapPath,
+		GroundZIndex:    10,
+		PropsZIndex:     20,
+		PropsTallZIndex: 35,
 		ColliderRadiusBySprite: map[string]float64{
-			gamepalette.SpriteObstacleBarrelGrayTop: 11,
-			gamepalette.SpriteObstacleCrateWood:     13,
+			gamepalette.SpriteObstacleBarrelGrayTop:  11,
+			gamepalette.SpriteObstacleCrateWood:      13,
+			gamepalette.SpriteObstacleTreeGreenLarge: 7,
 		},
 		DefaultEnemyOffsetX: 50,
 		DefaultEnemyOffsetY: -40,
@@ -61,12 +66,13 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 	}
 
 	renderables := world.Renderables()
-	if len(renderables) != 3 {
-		t.Fatalf("expected 3 renderables from map layers, got %d", len(renderables))
+	if len(renderables) != 4 {
+		t.Fatalf("expected 4 renderables from map layers, got %d", len(renderables))
 	}
 
 	groundFound := false
 	rotatedPropFound := false
+	tallTreeFound := false
 	for _, r := range renderables {
 		if r.Sprite.SpriteID == gamepalette.SpriteTileGrass1 {
 			groundFound = true
@@ -86,6 +92,13 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 				}
 			}
 		}
+
+		if r.Sprite.SpriteID == gamepalette.SpriteObstacleTreeGreenLarge {
+			tallTreeFound = true
+			if r.Sprite.ZIndex != 35 {
+				t.Fatalf("expected tall tree z-index 35, got %d", r.Sprite.ZIndex)
+			}
+		}
 	}
 
 	if !groundFound {
@@ -94,10 +107,27 @@ func TestSeedFromTiledMapSeedsLayersAndSpawns(t *testing.T) {
 	if !rotatedPropFound {
 		t.Fatalf("expected seeded rotated props object")
 	}
+	if !tallTreeFound {
+		t.Fatalf("expected seeded tree renderable")
+	}
 
 	solidBodies := world.SolidObstacleColliderBodies()
-	if len(solidBodies) != 2 {
-		t.Fatalf("expected 2 solid obstacle colliders, got %d", len(solidBodies))
+	if len(solidBodies) != 3 {
+		t.Fatalf("expected 3 solid obstacle colliders, got %d", len(solidBodies))
+	}
+
+	treeColliderFound := false
+	for _, body := range solidBodies {
+		if math.Abs(body.Transform.X-78) < 0.001 && math.Abs(body.Transform.Y-46) < 0.001 {
+			treeColliderFound = true
+			if math.Abs(body.Collider.Radius-7) > 0.001 {
+				t.Fatalf("expected tree collider radius 7, got %f", body.Collider.Radius)
+			}
+		}
+	}
+
+	if !treeColliderFound {
+		t.Fatalf("expected tree collider to be seeded")
 	}
 }
 

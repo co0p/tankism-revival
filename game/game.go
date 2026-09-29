@@ -71,8 +71,8 @@ const (
 	barrelCollisionRadius       = 11.0
 	fenceCollisionRadius        = 14.0
 	crateCollisionRadius        = 13.0
-	treeLargeCollisionRadius    = 24.0
-	treeSmallCollisionRadius    = 14.0
+	treeLargeCollisionRadius    = 12.0
+	treeSmallCollisionRadius    = 8.0
 	wireStraightCollisionRadius = 12.0
 	wireCrookedCollisionRadius  = 16.0
 	tankCrossCollisionRadius    = 12.0
@@ -150,9 +150,10 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 
 	world := ecs.NewWorld()
 	seedResult, err := worldseed.SeedFromTiledMap(world, worldseed.TiledSeedConfig{
-		Path:         mapPath,
-		GroundZIndex: ZIndexMap,
-		PropsZIndex:  ZIndexObstacles,
+		Path:            mapPath,
+		GroundZIndex:    ZIndexMap,
+		PropsZIndex:     ZIndexObstacles,
+		PropsTallZIndex: ZIndexPropsTall,
 		ColliderRadiusBySprite: map[string]float64{
 			SpriteObstacleBarrelGrayTop:  barrelCollisionRadius,
 			SpriteObstacleFenceRed:       fenceCollisionRadius,

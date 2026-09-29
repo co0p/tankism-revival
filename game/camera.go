@@ -1,5 +1,7 @@
 package game
 
+import "github.com/co0p/tankism-revival/lib/mathutil"
+
 type Camera struct {
 	X          float64
 	Y          float64
@@ -28,8 +30,8 @@ func (c *Camera) FollowTarget(mapWidth, mapHeight, targetX, targetY float64) {
 		maxY = 0
 	}
 
-	c.X = clamp(wantedX, 0, maxX)
-	c.Y = clamp(wantedY, 0, maxY)
+	c.X = mathutil.Clamp(wantedX, 0, maxX)
+	c.Y = mathutil.Clamp(wantedY, 0, maxY)
 }
 
 func (c Camera) WorldToScreen(worldX, worldY float64) (float64, float64) {

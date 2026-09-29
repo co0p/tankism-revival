@@ -17,7 +17,6 @@ The first release includes player movement and firing, enemy hunters, obstacles,
 
 ## Runtime package architecture
 
-- `app/tankism`: composition root (asset loading, entity wiring, update loop, process entrypoint)
 - `app/mapism`: Ebitengine map editor app for authoring map descriptions
 - `game/ecs`: minimal entity-component storage and queries
 - `game/sim`: deterministic game rules/systems (movement, AI, shooting, collisions)

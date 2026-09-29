@@ -6,6 +6,7 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 type CameraFollower interface {
@@ -299,8 +300,8 @@ func clampEntityToBounds(world *ecs.World, entity, mapEntity ecs.Entity, require
 		return nil
 	}
 
-	clampedX := clamp(transform.X, 0, mapBounds.Width)
-	clampedY := clamp(transform.Y, 0, mapBounds.Height)
+	clampedX := mathutil.Clamp(transform.X, 0, mapBounds.Width)
+	clampedY := mathutil.Clamp(transform.Y, 0, mapBounds.Height)
 	if clampedX == transform.X && clampedY == transform.Y {
 		return nil
 	}
@@ -326,15 +327,4 @@ func mapBoundsFromEntity(world *ecs.World, entity ecs.Entity) (ecscomponents.Map
 	}
 
 	return bounds, nil
-}
-
-func clamp(value, min, max float64) float64 {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-
-	return value
 }

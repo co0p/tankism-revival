@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/co0p/tankism-revival/game/ecs"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 func ApplyProximitySoundVolume(world *ecs.World, listenerEntity ecs.Entity) error {
@@ -29,7 +30,7 @@ func ApplyProximitySoundVolume(world *ecs.World, listenerEntity ecs.Entity) erro
 		}
 
 		factor := proximityFactor(listenerTransform.X, listenerTransform.Y, emitterTransform.X, emitterTransform.Y, settings.MaxDistance)
-		minFactor := clamp(settings.MinFactor, 0, 1)
+		minFactor := mathutil.Clamp(settings.MinFactor, 0, 1)
 		if factor < minFactor {
 			factor = minFactor
 		}
@@ -55,5 +56,5 @@ func proximityFactor(listenerX, listenerY, emitterX, emitterY, maxDistance float
 
 	distance := math.Hypot(emitterX-listenerX, emitterY-listenerY)
 	factor := 1 - (distance / maxDistance)
-	return clamp(factor, 0, 1)
+	return mathutil.Clamp(factor, 0, 1)
 }

@@ -5,16 +5,17 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 func IntegrateTankMovement(world *ecs.World, deltaSeconds float64) {
 	for _, mover := range world.TankMovers() {
-		throttle := clampUnit(mover.Intent.Throttle)
-		turn := clampUnit(mover.Intent.Turn)
+		throttle := mathutil.ClampUnit(mover.Intent.Throttle)
+		turn := mathutil.ClampUnit(mover.Intent.Turn)
 
 		transform := mover.Transform
 
-		transform.RotationRadians = normalizeRadians(
+		transform.RotationRadians = mathutil.NormalizeRadians(
 			transform.RotationRadians + turn*mover.Drive.TurnSpeedRadiansPS*deltaSeconds,
 		)
 
@@ -24,7 +25,7 @@ func IntegrateTankMovement(world *ecs.World, deltaSeconds float64) {
 
 		forwardSpeed := targetForwardSpeed
 		if maxDelta > 0 {
-			forwardSpeed = moveTowards(
+			forwardSpeed = mathutil.MoveTowards(
 				currentForwardSpeed,
 				targetForwardSpeed,
 				maxDelta,
@@ -81,42 +82,6 @@ func directionOf(value float64) float64 {
 	}
 
 	return 0
-}
-
-func moveTowards(current, target, maxDelta float64) float64 {
-	if maxDelta <= 0 {
-		return target
-	}
-
-	if target > current {
-		return math.Min(current+maxDelta, target)
-	}
-
-	if target < current {
-		return math.Max(current-maxDelta, target)
-	}
-
-	return target
-}
-
-func clampUnit(value float64) float64 {
-	if value < -1 {
-		return -1
-	}
-	if value > 1 {
-		return 1
-	}
-
-	return value
-}
-
-func normalizeRadians(radians float64) float64 {
-	wrapped := math.Mod(radians, 2*math.Pi)
-	if wrapped < 0 {
-		wrapped += 2 * math.Pi
-	}
-
-	return wrapped
 }
 
 func forwardVector(rotationRadians float64) (x float64, y float64) {

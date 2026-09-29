@@ -7,14 +7,16 @@ import (
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
 	"github.com/co0p/tankism-revival/lib/gamepalette"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 	"github.com/co0p/tankism-revival/lib/tiled"
 )
 
 type TiledSeedConfig struct {
 	Path string
 
-	GroundZIndex int
-	PropsZIndex  int
+	GroundZIndex    int
+	PropsZIndex     int
+	PropsTallZIndex int
 
 	ColliderRadiusBySprite map[string]float64
 
@@ -33,6 +35,10 @@ type TiledSeedResult struct {
 }
 
 func SeedFromTiledMap(world *ecs.World, cfg TiledSeedConfig) (TiledSeedResult, error) {
+	if cfg.PropsTallZIndex == 0 {
+		cfg.PropsTallZIndex = cfg.PropsZIndex
+	}
+
 	doc, err := tiled.ReadFile(cfg.Path)
 	if err != nil {
 		return TiledSeedResult{}, err
@@ -46,10 +52,13 @@ func SeedFromTiledMap(world *ecs.World, cfg TiledSeedConfig) (TiledSeedResult, e
 	if err := seedGroundTiles(world, doc, cfg.GroundZIndex); err != nil {
 		return TiledSeedResult{}, err
 	}
-	if err := seedObstacleTiles(world, doc, cfg.PropsZIndex, cfg.ColliderRadiusBySprite); err != nil {
+	if err := seedObstacleTiles(world, doc, cfg.PropsZIndex, cfg.PropsTallZIndex, cfg.ColliderRadiusBySprite); err != nil {
 		return TiledSeedResult{}, err
 	}
-	if err := seedPropsObjects(world, doc, cfg.PropsZIndex, cfg.ColliderRadiusBySprite); err != nil {
+	if err := seedPropsObjects(world, doc, tiled.PropsLayerName, cfg.PropsZIndex, cfg.PropsTallZIndex, cfg.ColliderRadiusBySprite); err != nil {
+		return TiledSeedResult{}, err
+	}
+	if err := seedPropsObjects(world, doc, tiled.PropsTallLayerName, cfg.PropsTallZIndex, cfg.PropsTallZIndex, cfg.ColliderRadiusBySprite); err != nil {
 		return TiledSeedResult{}, err
 	}
 
@@ -57,15 +66,15 @@ func SeedFromTiledMap(world *ecs.World, cfg TiledSeedConfig) (TiledSeedResult, e
 	playerSpawnY := mapHeight / 2
 
 	if spawn, ok := doc.Spawn(tiled.PlayerSpawnObjectName); ok {
-		playerSpawnX = clamp(spawn.X, 0, mapWidth)
-		playerSpawnY = clamp(spawn.Y, 0, mapHeight)
+		playerSpawnX = mathutil.Clamp(spawn.X, 0, mapWidth)
+		playerSpawnY = mathutil.Clamp(spawn.Y, 0, mapHeight)
 	}
 
-	enemySpawnX := clamp(playerSpawnX+cfg.DefaultEnemyOffsetX, 0, mapWidth)
-	enemySpawnY := clamp(playerSpawnY+cfg.DefaultEnemyOffsetY, 0, mapHeight)
+	enemySpawnX := mathutil.Clamp(playerSpawnX+cfg.DefaultEnemyOffsetX, 0, mapWidth)
+	enemySpawnY := mathutil.Clamp(playerSpawnY+cfg.DefaultEnemyOffsetY, 0, mapHeight)
 	if spawn, ok := doc.Spawn(tiled.EnemySpawnObjectName); ok {
-		enemySpawnX = clamp(spawn.X, 0, mapWidth)
-		enemySpawnY = clamp(spawn.Y, 0, mapHeight)
+		enemySpawnX = mathutil.Clamp(spawn.X, 0, mapWidth)
+		enemySpawnY = mathutil.Clamp(spawn.Y, 0, mapHeight)
 	}
 
 	return TiledSeedResult{
@@ -112,7 +121,7 @@ func seedGroundTiles(world *ecs.World, doc tiled.Map, zIndex int) error {
 	return nil
 }
 
-func seedObstacleTiles(world *ecs.World, doc tiled.Map, zIndex int, colliderRadiusBySprite map[string]float64) error {
+func seedObstacleTiles(world *ecs.World, doc tiled.Map, zIndex int, tallPropsZIndex int, colliderRadiusBySprite map[string]float64) error {
 	for row := 0; row < doc.Height; row++ {
 		for col := 0; col < doc.Width; col++ {
 			rawGID, ok := doc.TileGIDAtLayer(tiled.ObstacleLayerName, col, row)
@@ -128,7 +137,8 @@ func seedObstacleTiles(world *ecs.World, doc tiled.Map, zIndex int, colliderRadi
 
 			x := (float64(col) + 0.5) * float64(doc.TileWidth)
 			y := (float64(row) + 0.5) * float64(doc.TileHeight)
-			if err := spawnPropEntity(world, spriteDef.ID, zIndex, x, y, float64(rotationDeg), colliderRadiusBySprite); err != nil {
+			spriteZIndex := zIndexForSpriteLayer(spriteDef.Layer, zIndex, tallPropsZIndex)
+			if err := spawnPropEntity(world, spriteDef.ID, spriteZIndex, x, y, float64(rotationDeg), colliderRadiusBySprite); err != nil {
 				return err
 			}
 		}
@@ -137,8 +147,8 @@ func seedObstacleTiles(world *ecs.World, doc tiled.Map, zIndex int, colliderRadi
 	return nil
 }
 
-func seedPropsObjects(world *ecs.World, doc tiled.Map, zIndex int, colliderRadiusBySprite map[string]float64) error {
-	for _, object := range doc.PropsObjects() {
+func seedPropsObjects(world *ecs.World, doc tiled.Map, layerName string, zIndex int, tallPropsZIndex int, colliderRadiusBySprite map[string]float64) error {
+	for _, object := range doc.PropsObjectsOnLayer(layerName) {
 		baseGID, tiledRotation := tiled.DecodeRotatedGID(object.GID)
 		if baseGID <= 0 {
 			continue
@@ -150,12 +160,21 @@ func seedPropsObjects(world *ecs.World, doc tiled.Map, zIndex int, colliderRadiu
 		}
 
 		rotation := object.Rotation + float64(tiledRotation)
-		if err := spawnPropEntity(world, spriteDef.ID, zIndex, object.X, object.Y, rotation, colliderRadiusBySprite); err != nil {
+		spriteZIndex := zIndexForSpriteLayer(spriteDef.Layer, zIndex, tallPropsZIndex)
+		if err := spawnPropEntity(world, spriteDef.ID, spriteZIndex, object.X, object.Y, rotation, colliderRadiusBySprite); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func zIndexForSpriteLayer(layer gamepalette.Layer, defaultZIndex, tallPropsZIndex int) int {
+	if layer == gamepalette.LayerPropsTall {
+		return tallPropsZIndex
+	}
+
+	return defaultZIndex
 }
 
 func spawnPropEntity(world *ecs.World, spriteID string, zIndex int, x, y, rotationDeg float64, colliderRadiusBySprite map[string]float64) error {
@@ -184,15 +203,4 @@ func spawnPropEntity(world *ecs.World, spriteID string, zIndex int, x, y, rotati
 	}
 
 	return nil
-}
-
-func clamp(value, minValue, maxValue float64) float64 {
-	if value < minValue {
-		return minValue
-	}
-	if value > maxValue {
-		return maxValue
-	}
-
-	return value
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/lib/mathutil"
 )
 
 func UpdateChaserIntent(world *ecs.World, chaser, target ecs.Entity, stopDistance float64) error {
@@ -32,7 +33,7 @@ func UpdateChaserIntent(world *ecs.World, chaser, target ecs.Entity, stopDistanc
 	if distanceSquared > 0.0001 {
 		desiredRotation := math.Atan2(dx, -dy)
 		turnDelta := shortestAngleDelta(chaserTransform.RotationRadians, desiredRotation)
-		intent.Turn = clampUnit(turnDelta / (math.Pi / 4))
+		intent.Turn = mathutil.ClampUnit(turnDelta / (math.Pi / 4))
 
 		if intent.Throttle > 0 && math.Abs(turnDelta) > (math.Pi*0.75) {
 			intent.Throttle = 0.25
