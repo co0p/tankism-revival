@@ -105,6 +105,12 @@ type Health struct {
 	Max     float64
 }
 
+type HitFlash struct {
+	X, Y             float64
+	DurationSeconds  float64
+	RemainingSeconds float64
+}
+
 type LightColor struct {
 	R float64
 	G float64

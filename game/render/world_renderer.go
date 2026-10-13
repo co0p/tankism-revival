@@ -7,9 +7,11 @@ import (
 
 	"github.com/co0p/tankism-revival/game/ecs"
 	ecscomponents "github.com/co0p/tankism-revival/game/ecs/components"
+	"github.com/co0p/tankism-revival/game/sim"
 	"github.com/co0p/tankism-revival/lib/mathutil"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
@@ -29,7 +31,10 @@ type Camera interface {
 }
 
 type Config struct {
-	OutsideMapColor color.RGBA
+	GroundSplashSprite *ebiten.Image
+	TrackSprite        *ebiten.Image
+	SmokeSprites       []*ebiten.Image
+	OutsideMapColor    color.RGBA
 
 	LightSpriteSize     int
 	LightIntensityScale float64
@@ -43,7 +48,10 @@ type Config struct {
 }
 
 type WorldRenderer struct {
-	sprites map[string]*ebiten.Image
+	groundSplashSprite *ebiten.Image
+	trackRow           *ebiten.Image
+	smokeSprites       []*ebiten.Image
+	sprites            map[string]*ebiten.Image
 
 	outsideMapColor color.RGBA
 	lightSprite     *ebiten.Image
@@ -85,7 +93,16 @@ func NewWorldRenderer(sprites map[string]*ebiten.Image, cfg Config) *WorldRender
 		spriteMap[spriteID] = img
 	}
 
+	var trackRow *ebiten.Image
+	if cfg.TrackSprite != nil {
+		bounds := cfg.TrackSprite.Bounds()
+		// One paired row from the retina sprite, rather than the full straight strip.
+		trackRow = cfg.TrackSprite.SubImage(image.Rect(bounds.Min.X, bounds.Min.Y, bounds.Max.X, bounds.Min.Y+8)).(*ebiten.Image)
+	}
 	return &WorldRenderer{
+		groundSplashSprite:  cfg.GroundSplashSprite,
+		trackRow:            trackRow,
+		smokeSprites:        cfg.SmokeSprites,
 		sprites:             spriteMap,
 		outsideMapColor:     cfg.OutsideMapColor,
 		lightSprite:         newRadialLightSprite(cfg.LightSpriteSize),
@@ -99,14 +116,124 @@ func NewWorldRenderer(sprites map[string]*ebiten.Image, cfg Config) *WorldRender
 }
 
 func (r *WorldRenderer) Draw(screen *ebiten.Image, world *ecs.World, camera Camera) {
+	r.DrawWithTracks(screen, world, camera, nil)
+}
+
+func (r *WorldRenderer) DrawWithTracks(screen *ebiten.Image, world *ecs.World, camera Camera, marks []sim.TrackMark) {
+	r.DrawWithGroundEffects(screen, world, camera, marks, nil)
+}
+
+func (r *WorldRenderer) DrawWithGroundEffects(screen *ebiten.Image, world *ecs.World, camera Camera, marks []sim.TrackMark, splashes []sim.GroundSplash) {
 	screen.Fill(r.outsideMapColor)
 
-	r.drawRenderables(screen, world, camera, nil)
+	r.drawRenderables(screen, world, camera, func(renderable ecs.Renderable) bool { return renderable.Sprite.ZIndex < r.foregroundMinZIndex })
+	r.drawTracks(screen, marks, camera)
+	r.drawGroundSplashes(screen, splashes, camera)
+	r.drawRenderables(screen, world, camera, func(renderable ecs.Renderable) bool { return renderable.Sprite.ZIndex >= r.foregroundMinZIndex })
 	r.drawLighting(screen, world, camera)
 	r.drawRenderables(screen, world, camera, func(renderable ecs.Renderable) bool {
 		return renderable.Sprite.ZIndex >= r.foregroundMinZIndex
 	})
+	r.drawHitRings(screen, world, camera)
 	r.drawTankHealthBars(screen, world, camera)
+}
+
+func (r *WorldRenderer) drawGroundSplashes(screen *ebiten.Image, splashes []sim.GroundSplash, camera Camera) {
+	if r.groundSplashSprite == nil {
+		return
+	}
+	bounds := r.groundSplashSprite.Bounds()
+	for _, splash := range splashes {
+		x, y := camera.WorldToScreen(splash.X, splash.Y)
+		// Rotation can extend the corners beyond the sprite's half-width.
+		if !effectVisible(screen.Bounds(), x, y, sim.GroundSplashSize*math.Sqrt2/2) {
+			continue
+		}
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(-float64(bounds.Dx())/2, -float64(bounds.Dy())/2)
+		op.GeoM.Scale(sim.GroundSplashSize/float64(bounds.Dx()), sim.GroundSplashSize/float64(bounds.Dy()))
+		op.GeoM.Rotate(splash.RotationRadians)
+		op.GeoM.Translate(x, y)
+		op.ColorScale.ScaleAlpha(float32(0.8 * (1 - mathutil.Clamp01(splash.Age/sim.GroundSplashLifetime))))
+		screen.DrawImage(r.groundSplashSprite, op)
+	}
+}
+
+func (r *WorldRenderer) DrawDust(screen *ebiten.Image, particles []sim.DustParticle, camera Camera) {
+	for _, p := range particles {
+		if p.Variant < 0 || p.Variant >= len(r.smokeSprites) || p.Lifetime <= 0 || p.Age >= p.Lifetime {
+			continue
+		}
+		progress := mathutil.Clamp01(p.Age / p.Lifetime)
+		size := 4 + progress*12
+		x, y := camera.WorldToScreen(p.X, p.Y)
+		if !effectVisible(screen.Bounds(), x, y, size/2) {
+			continue
+		}
+		img := r.smokeSprites[p.Variant]
+		bounds := img.Bounds()
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(-float64(bounds.Dx())/2, -float64(bounds.Dy())/2)
+		op.GeoM.Scale(size/float64(bounds.Dx()), size/float64(bounds.Dy()))
+		op.GeoM.Translate(x, y)
+		alpha := 0.65 * (1 - progress)
+		op.ColorScale.Scale(float32(alpha), float32(alpha*0.85), float32(alpha*0.6), float32(alpha))
+		screen.DrawImage(img, op)
+	}
+}
+
+func (r *WorldRenderer) drawTracks(screen *ebiten.Image, marks []sim.TrackMark, camera Camera) {
+	if r.trackRow == nil {
+		return
+	}
+	bounds := r.trackRow.Bounds()
+	for _, mark := range marks {
+		remaining := 1 - mathutil.Clamp01(mark.Age/sim.TrackLifetime)
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(-float64(bounds.Dx())/2, -float64(bounds.Dy())/2)
+		op.GeoM.Scale(30/float64(bounds.Dx()), 0.5)
+		op.GeoM.Rotate(mark.RotationRadians)
+		x, y := camera.WorldToScreen(mark.X, mark.Y)
+		op.GeoM.Translate(x, y)
+		op.ColorScale.ScaleAlpha(float32(0.55 * remaining))
+		screen.DrawImage(r.trackRow, op)
+	}
+}
+
+func (r *WorldRenderer) DrawSmoke(screen *ebiten.Image, particles []sim.SmokeParticle, camera Camera) {
+	for _, p := range particles {
+		if p.Variant < 0 || p.Variant >= len(r.smokeSprites) || p.Lifetime <= 0 {
+			continue
+		}
+		img := r.smokeSprites[p.Variant]
+		progress := mathutil.Clamp01(p.Age / p.Lifetime)
+		size := p.StartSize + (p.EndSize-p.StartSize)*progress
+		// Brief fade-in keeps each newly emitted circle from popping into view.
+		alpha := p.Opacity * math.Min(1, progress/0.1) * (1 - progress)
+		bounds := img.Bounds()
+		op := &ebiten.DrawImageOptions{}
+		op.GeoM.Translate(-float64(bounds.Dx())/2, -float64(bounds.Dy())/2)
+		op.GeoM.Scale(size/float64(bounds.Dx()), size/float64(bounds.Dy()))
+		x, y := camera.WorldToScreen(p.X, p.Y)
+		op.GeoM.Translate(x, y)
+		op.ColorScale.ScaleAlpha(float32(alpha))
+		screen.DrawImage(img, op)
+	}
+}
+
+func (r *WorldRenderer) DrawSparks(screen *ebiten.Image, particles []sim.SparkParticle, camera Camera) {
+	for _, p := range particles {
+		if p.Lifetime <= 0 || p.Age >= p.Lifetime {
+			continue
+		}
+		remaining := 1 - mathutil.Clamp01(p.Age/p.Lifetime)
+		x, y := camera.WorldToScreen(p.X, p.Y)
+		// Short trails follow each spark's velocity, shrinking as it slows.
+		tailX := x - p.VelocityX*0.025
+		tailY := y - p.VelocityY*0.025
+		vector.StrokeLine(screen, float32(tailX), float32(tailY), float32(x), float32(y), 1.5,
+			color.NRGBA{R: 255, G: uint8(110 + 110*remaining), B: uint8(30 + 120*remaining), A: uint8(255 * remaining)}, true)
+	}
 }
 
 func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, camera Camera, include func(ecs.Renderable) bool) {
@@ -142,6 +269,19 @@ func (r *WorldRenderer) drawRenderables(screen *ebiten.Image, world *ecs.World, 
 		op.GeoM.Translate(screenX, screenY)
 
 		screen.DrawImage(spriteImage, op)
+	}
+}
+
+func (r *WorldRenderer) drawHitRings(screen *ebiten.Image, world *ecs.World, camera Camera) {
+	for _, flash := range world.HitFlashStates() {
+		if flash.RemainingSeconds <= 0 || flash.DurationSeconds <= 0 {
+			continue
+		}
+		remaining := mathutil.Clamp01(flash.RemainingSeconds / flash.DurationSeconds)
+		radius := 5 + (1-remaining)*9
+		x, y := camera.WorldToScreen(flash.X, flash.Y)
+		vector.StrokeCircle(screen, float32(x), float32(y), float32(radius), 2,
+			color.NRGBA{R: 255, G: 240, B: 180, A: uint8(255 * remaining)}, true)
 	}
 }
 

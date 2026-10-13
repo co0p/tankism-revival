@@ -106,6 +106,18 @@
 
 Attribution is appreciated by the author but not required by CC0.
 
+- `resources/images/kenney_topdown_tanks_redux/ground_splash.png`
+  - Original archive path: `PNG/Default size/oilSpill_small.png`
+  - Notes: small ground impact mark using the supplied image. Dust reuses the extracted Kenney smoke circles. Uses the Kenney CC0 license copy listed above.
+
+- `resources/images/kenney_topdown_tanks_redux/tracks_small.png`
+  - Original archive path: `PNG/Retina/tracksSmall.png`
+  - Notes: paired tread marks, using one row per distance-spaced ground stamp. Uses the Kenney CC0 license copy listed above.
+
+- `resources/images/kenney_topdown_tanks_redux/smoke_circles.png`
+  - Original archive path: `PNG/Retina/explosionSmoke5.png`
+  - Notes: gray circle cluster (bottom row, second from left in the supplied sheet). The eight circles are extracted at startup for tank smoke particles, ignoring nearly invisible alpha residue between them. Uses the Kenney CC0 license copy listed above.
+
 ## Thimras — Cannon fire (Top Down Shooter collection)
 
 - **Requested collection page:** https://opengameart.org/content/top-down-shooter-0

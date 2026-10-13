@@ -33,6 +33,9 @@ const (
 	Explosion1Path      = "images/kenney_topdown_tanks_redux/explosion_1.png"
 	ExplosionSmoke1Path = "images/kenney_topdown_tanks_redux/explosion_smoke_1.png"
 	TankBodyDarkPath    = "images/kenney_topdown_tanks_redux/tank_body_dark.png"
+	SmokeCirclesPath    = "images/kenney_topdown_tanks_redux/smoke_circles.png"
+	TracksSmallPath     = "images/kenney_topdown_tanks_redux/tracks_small.png"
+	GroundSplashPath    = "images/kenney_topdown_tanks_redux/ground_splash.png"
 
 	CannonFireSFXPath = "audio/opengameart_top_down_shooter/cannon_fire.ogg"
 	EngineLoopSFXPath = "audio/opengameart_top_down_shooter/engine_heavy_loop.ogg"

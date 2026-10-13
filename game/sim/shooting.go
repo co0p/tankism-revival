@@ -204,19 +204,35 @@ func UpdateLifetimes(world *ecs.World, deltaSeconds float64) error {
 }
 
 func IntegrateProjectiles(world *ecs.World, deltaSeconds float64) error {
+	return integrateProjectiles(world, deltaSeconds, nil)
+}
+
+func integrateProjectiles(world *ecs.World, deltaSeconds float64, ground *GroundImpacts) error {
 	for _, state := range world.ProjectileStates() {
 		transform := state.Transform
 		projectile := state.Projectile
 
-		transform.X += projectile.VelocityX * deltaSeconds
-		transform.Y += projectile.VelocityY * deltaSeconds
-		projectile.RemainingLifetime -= deltaSeconds
+		travelSeconds := math.Min(math.Max(0, deltaSeconds), math.Max(0, projectile.RemainingLifetime))
+		transform.X += projectile.VelocityX * travelSeconds
+		transform.Y += projectile.VelocityY * travelSeconds
+		projectile.RemainingLifetime -= math.Max(0, deltaSeconds)
 
 		if err := world.SetTransform(state.Entity, transform); err != nil {
 			return fmt.Errorf("set projectile transform: %w", err)
 		}
 
 		if projectile.RemainingLifetime <= 0 {
+			if ground != nil {
+				// Preserve tank/cover impacts on the last travel tick.
+				if projectileHitsBody(world, transform, state.Collider.Radius, projectile.Owner) {
+					if err := world.SetProjectile(state.Entity, projectile); err != nil {
+						return err
+					}
+					continue
+				}
+				state.Transform = transform
+				ground.Burst(state)
+			}
 			world.DestroyEntity(state.Entity)
 			continue
 		}
@@ -230,12 +246,33 @@ func IntegrateProjectiles(world *ecs.World, deltaSeconds float64) error {
 }
 
 func ResolveProjectileImpacts(world *ecs.World) error {
+	return resolveProjectileImpacts(world, nil)
+}
+
+func projectileHitsBody(world *ecs.World, transform ecscomponents.Transform, radius float64, owner ecs.Entity) bool {
+	for _, body := range world.SolidObstacleColliderBodies() {
+		if circlesOverlap(transform.X, transform.Y, radius, body.Transform.X, body.Transform.Y, body.Collider.Radius) {
+			return true
+		}
+	}
+	for _, body := range world.TankColliderBodies() {
+		if body.Entity != owner && circlesOverlap(transform.X, transform.Y, radius, body.Transform.X, body.Transform.Y, body.Collider.Radius) {
+			return true
+		}
+	}
+	return false
+}
+
+func resolveProjectileImpacts(world *ecs.World, sparks *SparkParticles) error {
 	projectiles := world.ProjectileStates()
 	obstacles := world.SolidObstacleColliderBodies()
 	tanks := world.TankColliderBodies()
 
 	for _, projectile := range projectiles {
 		if hitsObstacle(projectile, obstacles) {
+			if sparks != nil {
+				sparks.Burst(projectile)
+			}
 			world.DestroyEntity(projectile.Entity)
 			continue
 		}
@@ -257,7 +294,7 @@ func ResolveProjectileImpacts(world *ecs.World) error {
 			}
 
 			health, ok := world.Health(tank.Entity)
-			if ok {
+			if ok && health.Current > 0 && projectile.Projectile.Damage > 0 {
 				health.Current -= projectile.Projectile.Damage
 				if health.Current < 0 {
 					health.Current = 0
@@ -265,8 +302,19 @@ func ResolveProjectileImpacts(world *ecs.World) error {
 				if err := world.SetHealth(tank.Entity, health); err != nil {
 					return fmt.Errorf("set tank health: %w", err)
 				}
+				if err := world.SetHitFlash(tank.Entity, ecscomponents.HitFlash{
+					X:                projectile.Transform.X,
+					Y:                projectile.Transform.Y,
+					DurationSeconds:  HitFlashDurationSeconds,
+					RemainingSeconds: HitFlashDurationSeconds,
+				}); err != nil {
+					return fmt.Errorf("set tank hit flash: %w", err)
+				}
 			}
 
+			if sparks != nil {
+				sparks.Burst(projectile)
+			}
 			world.DestroyEntity(projectile.Entity)
 			break
 		}

@@ -55,7 +55,7 @@ const (
 
 	defaultEnemyWeaponCooldown            = 0.92
 	defaultEnemyProjectileSpeed           = 300.0
-	defaultEnemyProjectileLife            = 1.45
+	defaultEnemyProjectileLife            = defaultPlayerProjectileLife
 	defaultEnemyProjectileDamage          = 6.0
 	defaultEnemyMuzzleOffset              = 22.0
 	defaultEnemyProjectileRadius          = 4.0
@@ -131,6 +131,11 @@ type Game struct {
 	soundMixer            *libaudio.EffectMixer
 	activeEngineLoops     map[string]struct{}
 	gameOver              bool
+	playerHitShake        sim.PlayerHitShake
+	smoke                 *sim.SmokeParticles
+	sparks                *sim.SparkParticles
+	tracks                *sim.Tracks
+	groundImpacts         *sim.GroundImpacts
 	gameOverShakeSeconds  float64
 	gameOverShakePhase    float64
 	gameOverShakeX        float64
@@ -146,7 +151,7 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		mapPath = DefaultMapPath
 	}
 
-	spriteAssets := make([]sprites.Asset, 0, len(gamepalette.Sprites)+5)
+	spriteAssets := make([]sprites.Asset, 0, len(gamepalette.Sprites)+7)
 	for _, spriteDef := range gamepalette.Sprites {
 		spriteAssets = append(spriteAssets, sprites.Asset{ID: spriteDef.ID, Path: spriteDef.Path})
 	}
@@ -156,11 +161,21 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		sprites.Asset{ID: SpriteExplosionSmoke, Path: gameassets.ExplosionSmoke3Path},
 		sprites.Asset{ID: SpriteExplosionPlume, Path: gameassets.ExplosionSmoke1Path},
 		sprites.Asset{ID: SpriteEnemyWreckHull, Path: gameassets.TankBodyDarkPath},
+		sprites.Asset{ID: SpriteTracksSmall, Path: gameassets.TracksSmallPath},
+		sprites.Asset{ID: SpriteGroundSplash, Path: gameassets.GroundSplashPath},
 	)
 
 	spriteImages, err := sprites.Load(gameassets.FS, spriteAssets)
 	if err != nil {
 		return nil, err
+	}
+	smokeCircles, err := sprites.LoadCircles(gameassets.FS, gameassets.SmokeCirclesPath)
+	if err != nil {
+		return nil, err
+	}
+	smokeImages := make([]*ebiten.Image, len(smokeCircles))
+	for i, circle := range smokeCircles {
+		smokeImages[i] = ebiten.NewImageFromImage(circle)
 	}
 
 	soundBank, err := libaudio.LoadSoundBank(gameassets.FS, defaultAudioSampleRate, []libaudio.SoundAsset{
@@ -182,6 +197,9 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		HealthBarYOffset:    30,
 		HealthBarBorderSize: 1,
 		ForegroundMinZIndex: ZIndexObstacles,
+		SmokeSprites:        smokeImages,
+		TrackSprite:         spriteImages[SpriteTracksSmall],
+		GroundSplashSprite:  spriteImages[SpriteGroundSplash],
 	})
 
 	world := ecs.NewWorld()
@@ -469,6 +487,10 @@ func NewGameWithMap(mapPath string) (*Game, error) {
 		renderer:              renderer,
 		soundMixer:            soundMixer,
 		activeEngineLoops:     make(map[string]struct{}),
+		smoke:                 sim.NewSmokeParticles(len(smokeImages)),
+		sparks:                sim.NewSparkParticles(),
+		tracks:                sim.NewTracks(),
+		groundImpacts:         sim.NewGroundImpacts(len(smokeImages)),
 	}, nil
 }
 
@@ -479,6 +501,18 @@ func (g *Game) Update() error {
 func (g *Game) updateGame(deltaSeconds float64) error {
 	if g.gameOver {
 		g.updateGameOverShake(deltaSeconds)
+		if g.smoke != nil {
+			g.smoke.Advance(deltaSeconds)
+		}
+		if g.sparks != nil {
+			g.sparks.Advance(deltaSeconds)
+		}
+		if g.tracks != nil {
+			g.tracks.Advance(deltaSeconds)
+		}
+		if g.groundImpacts != nil {
+			g.groundImpacts.Advance(deltaSeconds)
+		}
 		return nil
 	}
 
@@ -487,6 +521,7 @@ func (g *Game) updateGame(deltaSeconds float64) error {
 		return fmt.Errorf("set player intent: %w", err)
 	}
 
+	playerHealthBefore, _ := g.world.Health(g.playerEntity)
 	if err := sim.RunDefaultPipeline(g.world, deltaSeconds, sim.PipelineConfig{
 		PlayerEntity:        g.playerEntity,
 		MapEntity:           g.mapEntity,
@@ -514,6 +549,10 @@ func (g *Game) updateGame(deltaSeconds float64) error {
 			EnemyWreckColliderRadius: enemyCollisionRadius,
 		},
 		Camera:                  &g.camera,
+		Smoke:                   g.smoke,
+		Sparks:                  g.sparks,
+		Tracks:                  g.tracks,
+		GroundImpacts:           g.groundImpacts,
 		PlayerBackLightEntity:   g.playerBackLightEntity,
 		PlayerBackLightDistance: defaultPlayerBackLightDistance,
 	}); err != nil {
@@ -524,6 +563,8 @@ func (g *Game) updateGame(deltaSeconds float64) error {
 		g.setGameOver()
 		return nil
 	}
+	playerHealthAfter, _ := g.world.Health(g.playerEntity)
+	g.playerHitShake.Update(deltaSeconds, playerHealthAfter.Current < playerHealthBefore.Current)
 
 	if err := g.syncEngineLoops(); err != nil {
 		return fmt.Errorf("sync engine loops: %w", err)
@@ -604,7 +645,26 @@ func (g *Game) updateDraw(screen *ebiten.Image, interpolationAlpha float64) {
 	drawCamera := g.camera
 	drawCamera.X += g.gameOverShakeX
 	drawCamera.Y += g.gameOverShakeY
-	g.renderer.Draw(screen, g.world, &drawCamera)
+	drawCamera.X += g.playerHitShake.X
+	drawCamera.Y += g.playerHitShake.Y
+	var trackMarks []sim.TrackMark
+	if g.tracks != nil {
+		trackMarks = g.tracks.Marks()
+	}
+	var splashes []sim.GroundSplash
+	if g.groundImpacts != nil {
+		splashes = g.groundImpacts.Splashes()
+	}
+	g.renderer.DrawWithGroundEffects(screen, g.world, &drawCamera, trackMarks, splashes)
+	if g.smoke != nil {
+		g.renderer.DrawSmoke(screen, g.smoke.Particles(), &drawCamera)
+	}
+	if g.sparks != nil {
+		g.renderer.DrawSparks(screen, g.sparks.Particles(), &drawCamera)
+	}
+	if g.groundImpacts != nil {
+		g.renderer.DrawDust(screen, g.groundImpacts.Dust(), &drawCamera)
+	}
 
 	if g.gameOver {
 		ebitenutil.DebugPrintAt(screen, "GAME OVER - player tank destroyed", LogicalWidth/2-130, LogicalHeight/2)
@@ -630,6 +690,7 @@ func (g *Game) setGameOver() {
 	}
 
 	g.gameOver = true
+	g.playerHitShake = sim.PlayerHitShake{}
 	g.gameOverShakeSeconds = defaultGameOverShakeDurationSeconds
 	g.gameOverShakePhase = 0
 	g.gameOverShakeX = 0

@@ -15,6 +15,7 @@ const (
 	KindProjectile            Kind = "projectile"
 	KindLifetime              Kind = "lifetime"
 	KindHealth                Kind = "health"
+	KindHitFlash              Kind = "hit_flash"
 	KindCircleCollider        Kind = "circle_collider"
 	KindSolidObstacle         Kind = "solid_obstacle"
 	KindMapBounds             Kind = "map_bounds"
@@ -26,5 +27,9 @@ const (
 	KindEngineAudio           Kind = "engine_audio"
 
 	// pipeline resource that is not an ECS component
-	KindCamera Kind = "camera"
+	KindCamera         Kind = "camera"
+	KindSmokeParticles Kind = "smoke_particles"
+	KindSparkParticles Kind = "spark_particles"
+	KindTracks         Kind = "tracks"
+	KindGroundImpacts  Kind = "ground_impacts"
 )

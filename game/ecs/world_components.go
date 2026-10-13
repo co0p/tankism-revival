@@ -91,6 +91,27 @@ func (w *World) SetWeapon(entity Entity, weapon ecscomponents.Weapon) error {
 	return AttachComponent(w, entity, weapon)
 }
 
+func (w *World) SetHitFlash(entity Entity, flash ecscomponents.HitFlash) error {
+	return AttachComponent(w, entity, flash)
+}
+
+func (w *World) HitFlash(entity Entity) (ecscomponents.HitFlash, bool) {
+	flash, ok := w.hitFlashes[entity]
+	return flash, ok
+}
+
+func (w *World) RemoveHitFlash(entity Entity) {
+	delete(w.hitFlashes, entity)
+}
+
+func (w *World) HitFlashStates() map[Entity]ecscomponents.HitFlash {
+	states := make(map[Entity]ecscomponents.HitFlash, len(w.hitFlashes))
+	for entity, flash := range w.hitFlashes {
+		states[entity] = flash
+	}
+	return states
+}
+
 func (w *World) Weapon(entity Entity) (ecscomponents.Weapon, bool) {
 	weapon, ok := w.weapons[entity]
 	return weapon, ok

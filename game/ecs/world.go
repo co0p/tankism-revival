@@ -20,6 +20,7 @@ type Component interface {
 		ecscomponents.TankVelocity |
 		ecscomponents.EnemyAI |
 		ecscomponents.Health |
+		ecscomponents.HitFlash |
 		ecscomponents.Weapon |
 		ecscomponents.Projectile |
 		ecscomponents.Lifetime |
@@ -113,6 +114,7 @@ type World struct {
 	velocity     map[Entity]ecscomponents.TankVelocity
 	enemyAI      map[Entity]ecscomponents.EnemyAI
 	health       map[Entity]ecscomponents.Health
+	hitFlashes   map[Entity]ecscomponents.HitFlash
 	weapons      map[Entity]ecscomponents.Weapon
 	projectiles  map[Entity]ecscomponents.Projectile
 	lifetimes    map[Entity]ecscomponents.Lifetime
@@ -140,6 +142,7 @@ func NewWorld() *World {
 		velocity:     make(map[Entity]ecscomponents.TankVelocity),
 		enemyAI:      make(map[Entity]ecscomponents.EnemyAI),
 		health:       make(map[Entity]ecscomponents.Health),
+		hitFlashes:   make(map[Entity]ecscomponents.HitFlash),
 		weapons:      make(map[Entity]ecscomponents.Weapon),
 		projectiles:  make(map[Entity]ecscomponents.Projectile),
 		lifetimes:    make(map[Entity]ecscomponents.Lifetime),
@@ -183,6 +186,7 @@ func (w *World) DestroyEntity(entity Entity) bool {
 	delete(w.velocity, entity)
 	delete(w.enemyAI, entity)
 	delete(w.health, entity)
+	delete(w.hitFlashes, entity)
 	delete(w.weapons, entity)
 	delete(w.projectiles, entity)
 	delete(w.lifetimes, entity)
@@ -223,6 +227,8 @@ func AttachComponent[T Component](w *World, entity Entity, component T) error {
 		w.enemyAI[entity] = c
 	case ecscomponents.Health:
 		w.health[entity] = c
+	case ecscomponents.HitFlash:
+		w.hitFlashes[entity] = c
 	case ecscomponents.Weapon:
 		w.weapons[entity] = c
 	case ecscomponents.Projectile:
