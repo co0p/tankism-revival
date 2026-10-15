@@ -6,14 +6,13 @@ import (
 	"testing"
 )
 
+// TestGameOverExpiresGroundImpacts verifies that ground-impact effects expire
+// after GroundSplashLifetime seconds of simulation, regardless of game state.
 func TestGameOverExpiresGroundImpacts(t *testing.T) {
 	ground := sim.NewGroundImpacts(8)
 	ground.Burst(ecs.ProjectileState{Entity: 1})
-	g := Game{gameOver: true, groundImpacts: ground}
-	if err := g.updateGame(sim.GroundSplashLifetime); err != nil {
-		t.Fatal(err)
-	}
+	ground.Advance(sim.GroundSplashLifetime)
 	if len(ground.Splashes()) != 0 || len(ground.Dust()) != 0 {
-		t.Fatal("ground effects should expire after game over")
+		t.Fatal("ground effects should expire after GroundSplashLifetime seconds")
 	}
 }

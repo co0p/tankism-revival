@@ -16,7 +16,6 @@ import (
 	"github.com/co0p/tankism-revival/lib/sprites"
 	gameassets "github.com/co0p/tankism-revival/resources"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 const (
@@ -110,10 +109,6 @@ const (
 	defaultExplosionLightIntensity = 0.60
 	defaultBurstLightRadius        = 118.0
 	defaultBurstLightIntensity     = 0.92
-
-	defaultGameOverShakeDurationSeconds = 0.32
-	defaultGameOverShakeAmplitude       = 9.0
-	defaultGameOverShakeFrequency       = 34.0
 )
 
 var (
@@ -130,16 +125,11 @@ type Game struct {
 	renderer              *gamerender.WorldRenderer
 	soundMixer            *libaudio.EffectMixer
 	activeEngineLoops     map[string]struct{}
-	gameOver              bool
 	playerHitShake        sim.PlayerHitShake
 	smoke                 *sim.SmokeParticles
 	sparks                *sim.SparkParticles
 	tracks                *sim.Tracks
 	groundImpacts         *sim.GroundImpacts
-	gameOverShakeSeconds  float64
-	gameOverShakePhase    float64
-	gameOverShakeX        float64
-	gameOverShakeY        float64
 }
 
 func NewGame() (*Game, error) {
@@ -499,19 +489,30 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) updateGame(deltaSeconds float64) error {
-	if g.gameOver {
-		g.updateGameOverShake(deltaSeconds)
-		if g.smoke != nil {
-			g.smoke.Advance(deltaSeconds)
+	if g.smoke != nil {
+		g.smoke.Advance(deltaSeconds)
+	}
+	if g.sparks != nil {
+		g.sparks.Advance(deltaSeconds)
+	}
+	if g.tracks != nil {
+		g.tracks.Advance(deltaSeconds)
+	}
+	if g.groundImpacts != nil {
+		g.groundImpacts.Advance(deltaSeconds)
+	}
+
+	if g.playerDestroyed() {
+		// Stop all engine audio when the player is destroyed.
+		for _, queued := range g.world.SoundIntents() {
+			g.world.RemovePlaySoundIntent(queued.Entity)
 		}
-		if g.sparks != nil {
-			g.sparks.Advance(deltaSeconds)
-		}
-		if g.tracks != nil {
-			g.tracks.Advance(deltaSeconds)
-		}
-		if g.groundImpacts != nil {
-			g.groundImpacts.Advance(deltaSeconds)
+		if g.soundMixer != nil {
+			for loopID := range g.activeEngineLoops {
+				g.soundMixer.RemoveLoop(loopID)
+			}
+			g.activeEngineLoops = make(map[string]struct{})
+			g.soundMixer.Update()
 		}
 		return nil
 	}
@@ -560,7 +561,6 @@ func (g *Game) updateGame(deltaSeconds float64) error {
 	}
 
 	if g.playerDestroyed() {
-		g.setGameOver()
 		return nil
 	}
 	playerHealthAfter, _ := g.world.Health(g.playerEntity)
@@ -643,8 +643,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func (g *Game) updateDraw(screen *ebiten.Image, interpolationAlpha float64) {
 	_ = interpolationAlpha
 	drawCamera := g.camera
-	drawCamera.X += g.gameOverShakeX
-	drawCamera.Y += g.gameOverShakeY
 	drawCamera.X += g.playerHitShake.X
 	drawCamera.Y += g.playerHitShake.Y
 	var trackMarks []sim.TrackMark
@@ -666,9 +664,26 @@ func (g *Game) updateDraw(screen *ebiten.Image, interpolationAlpha float64) {
 		g.renderer.DrawDust(screen, g.groundImpacts.Dust(), &drawCamera)
 	}
 
-	if g.gameOver {
-		ebitenutil.DebugPrintAt(screen, "GAME OVER - player tank destroyed", LogicalWidth/2-130, LogicalHeight/2)
+}
+
+func (g *Game) IsPlayerDestroyed() bool {
+	return g.playerDestroyed()
+}
+
+func (g *Game) AreAllEnemiesDestroyed() bool {
+	for _, enemy := range g.enemyEntities {
+		if !g.world.IsAlive(enemy) {
+			continue
+		}
+		health, ok := g.world.Health(enemy)
+		if !ok {
+			continue
+		}
+		if health.Current > 0 && health.Max > 0 {
+			return false
+		}
 	}
+	return true
 }
 
 func (g *Game) playerDestroyed() bool {
@@ -682,54 +697,6 @@ func (g *Game) playerDestroyed() bool {
 	}
 
 	return health.Current <= 0 || health.Max <= 0
-}
-
-func (g *Game) setGameOver() {
-	if g.gameOver {
-		return
-	}
-
-	g.gameOver = true
-	g.playerHitShake = sim.PlayerHitShake{}
-	g.gameOverShakeSeconds = defaultGameOverShakeDurationSeconds
-	g.gameOverShakePhase = 0
-	g.gameOverShakeX = 0
-	g.gameOverShakeY = 0
-
-	for _, queued := range g.world.SoundIntents() {
-		g.world.RemovePlaySoundIntent(queued.Entity)
-	}
-
-	if g.soundMixer == nil {
-		return
-	}
-
-	for loopID := range g.activeEngineLoops {
-		g.soundMixer.RemoveLoop(loopID)
-	}
-	g.activeEngineLoops = make(map[string]struct{})
-	g.soundMixer.Update()
-}
-
-func (g *Game) updateGameOverShake(deltaSeconds float64) {
-	if g.gameOverShakeSeconds <= 0 {
-		g.gameOverShakeX = 0
-		g.gameOverShakeY = 0
-		return
-	}
-
-	g.gameOverShakeSeconds -= deltaSeconds
-	if g.gameOverShakeSeconds <= 0 {
-		g.gameOverShakeX = 0
-		g.gameOverShakeY = 0
-		g.gameOverShakeSeconds = 0
-		return
-	}
-
-	envelope := g.gameOverShakeSeconds / defaultGameOverShakeDurationSeconds
-	g.gameOverShakePhase += deltaSeconds * defaultGameOverShakeFrequency
-	g.gameOverShakeX = math.Sin(g.gameOverShakePhase*2.1) * defaultGameOverShakeAmplitude * envelope
-	g.gameOverShakeY = math.Cos(g.gameOverShakePhase*1.7) * (defaultGameOverShakeAmplitude * 0.8) * envelope
 }
 
 func (g *Game) Layout(_, _ int) (screenWidth, screenHeight int) {

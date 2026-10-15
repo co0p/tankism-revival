@@ -39,9 +39,13 @@ const (
 
 	CannonFireSFXPath = "audio/opengameart_top_down_shooter/cannon_fire.ogg"
 	EngineLoopSFXPath = "audio/opengameart_top_down_shooter/engine_heavy_loop.ogg"
+
+	KenneyBlocksFontPath = "fonts/Kenney Blocks.ttf"
+
+	BlurShaderPath = "shaders/blur.kage"
 )
 
 // FS contains embedded runtime assets needed by the executable.
 //
-//go:embed images/kenney_topdown_tanks_redux/*.png audio/opengameart_top_down_shooter/*.ogg
+//go:embed images/kenney_topdown_tanks_redux/*.png audio/opengameart_top_down_shooter/*.ogg fonts/*.ttf shaders/*.kage
 var FS embed.FS

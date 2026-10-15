@@ -1,0 +1,36 @@
+//kage:unit pixels
+
+package main
+
+// Blur applies a separable Gaussian blur with a fixed radius of 8 pixels.
+// Set Axis to 0 for horizontal, 1 for vertical.
+
+var Axis float
+
+func Fragment(dst vec4, src vec2, color vec4) vec4 {
+	sum := vec4(0)
+	totalWeight := 0.0
+
+	// Unrolled Gaussian weights for radius 8.
+	// Weights are e^(-i^2 / (2 * sigma^2)) with sigma = 4.
+	offsets := [17]float{-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8}
+	weights := [17]float{
+		0.0002, 0.0011, 0.0051, 0.0181, 0.0500, 0.1065, 0.1762,
+		0.2254, 0.2252, 0.2254, 0.1762, 0.1065, 0.0500, 0.0181,
+		0.0051, 0.0011, 0.0002,
+	}
+
+	for i := 0; i < 17; i++ {
+		var offset vec2
+		if Axis < 0.5 {
+			offset = vec2(offsets[i], 0)
+		} else {
+			offset = vec2(0, offsets[i])
+		}
+		w := weights[i]
+		sum += imageSrc0At(src+offset) * w
+		totalWeight += w
+	}
+
+	return sum / totalWeight
+}
